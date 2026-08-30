@@ -1,6 +1,24 @@
 import 'package:flutter/material.dart';
 import 'client_arrival_confirmation_screen.dart';
 
+// ─────────────────────────────────────────────
+// Paleta de la app: azul petróleo, escalas de azul oscuro,
+// grises y un acento en naranja.
+// (Misma paleta usada en el resto de las pantallas del proyecto.)
+// ─────────────────────────────────────────────
+class AppColors {
+  static const Color background = Color(0xFFF2F5F6);
+  static const Color petrolDark = Color(0xFF0B3B4A);
+  static const Color petrolBase = Color(0xFF12566B);
+  static const Color petrolLight = Color(0xFF1D7A94);
+  static const Color slateGray = Color(0xFF5C6B73);
+  static const Color borderGray = Color(0xFFE1E7E9);
+  static const Color textPrimary = Color(0xFF16262D);
+  static const Color accentOrange = Color(0xFFE8821E);
+  static const Color white = Colors.white;
+  static const Color success = Color(0xFF2E7D5B); // verde para "punto de origen"
+}
+
 class ClientDriverTrackingScreen extends StatelessWidget {
   const ClientDriverTrackingScreen({super.key});
 
@@ -9,15 +27,15 @@ class ClientDriverTrackingScreen extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          // Fondo del mapa (simplificado)
+          // Fondo del mapa (simplificado) — azul petróleo en vez de verde
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFFE8F5E9),
-                  Color(0xFFC8E6C9),
+                  AppColors.background,
+                  Color(0xFFDCE6E9),
                 ],
               ),
             ),
@@ -36,18 +54,18 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: AppColors.petrolDark.withOpacity(0.12),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                      icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
                       onPressed: () {
                         Navigator.of(context).pop();
                       },
@@ -58,23 +76,24 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFFF8A00),
+                      color: AppColors.petrolDark,
+                      letterSpacing: 0.2,
                     ),
                   ),
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: AppColors.petrolDark.withOpacity(0.12),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.notifications_outlined, color: Colors.black87),
+                      icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
                       onPressed: () {},
                     ),
                   ),
@@ -89,19 +108,23 @@ class ClientDriverTrackingScreen extends StatelessWidget {
               width: 70,
               height: 70,
               decoration: BoxDecoration(
-                color: const Color(0xFFFF8A00),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.petrolLight, AppColors.petrolDark],
+                ),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 12,
+                    color: AppColors.petrolBase.withOpacity(0.4),
+                    blurRadius: 14,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: const Icon(
                 Icons.directions_car,
-                color: Colors.white,
+                color: AppColors.white,
                 size: 40,
               ),
             ),
@@ -113,12 +136,13 @@ class ClientDriverTrackingScreen extends StatelessWidget {
             child: Container(
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.white,
                 borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.borderGray, width: 1),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 16,
+                    color: AppColors.petrolDark.withOpacity(0.15),
+                    blurRadius: 20,
                     offset: const Offset(0, -4),
                   ),
                 ],
@@ -135,8 +159,8 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                           width: 60,
                           height: 60,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF8A00),
                             shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.accentOrange, width: 2),
                             image: const DecorationImage(
                               image: NetworkImage(
                                 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop',
@@ -155,7 +179,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -163,7 +187,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                 children: [
                                   const Icon(
                                     Icons.star,
-                                    color: Color(0xFFFFB800),
+                                    color: AppColors.accentOrange,
                                     size: 16,
                                   ),
                                   const SizedBox(width: 4),
@@ -171,7 +195,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                     '4.9 · 240 viajes',
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: Colors.grey[600],
+                                      color: AppColors.slateGray,
                                     ),
                                   ),
                                 ],
@@ -181,7 +205,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                 'Toyota Corolla · ABC 123 · Rojo',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.grey[700],
+                                  color: AppColors.slateGray,
                                 ),
                               ),
                             ],
@@ -193,12 +217,13 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF5F7FA),
+                                color: AppColors.background,
                                 shape: BoxShape.circle,
+                                border: Border.all(color: AppColors.borderGray),
                               ),
                               child: const Icon(
                                 Icons.call,
-                                color: Color(0xFFFF8A00),
+                                color: AppColors.petrolDark,
                                 size: 20,
                               ),
                             ),
@@ -207,12 +232,13 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF5F7FA),
+                                color: AppColors.background,
                                 shape: BoxShape.circle,
+                                border: Border.all(color: AppColors.borderGray),
                               ),
                               child: const Icon(
                                 Icons.message_outlined,
-                                color: Color(0xFFFF8A00),
+                                color: AppColors.petrolDark,
                                 size: 20,
                               ),
                             ),
@@ -226,8 +252,9 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF5F7FA),
+                        color: AppColors.background,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.borderGray, width: 1),
                       ),
                       child: Column(
                         children: [
@@ -237,7 +264,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                 width: 12,
                                 height: 12,
                                 decoration: const BoxDecoration(
-                                  color: Colors.green,
+                                  color: AppColors.success,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -248,7 +275,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
+                                    color: AppColors.textPrimary,
                                   ),
                                 ),
                               ),
@@ -259,7 +286,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                             child: Container(
                               height: 24,
                               width: 2,
-                              color: Colors.grey[400],
+                              color: AppColors.borderGray,
                             ),
                           ),
                           Row(
@@ -268,7 +295,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                 width: 12,
                                 height: 12,
                                 decoration: const BoxDecoration(
-                                  color: Color(0xFFFF8A00),
+                                  color: AppColors.accentOrange,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -279,7 +306,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
+                                    color: AppColors.textPrimary,
                                   ),
                                 ),
                               ),
@@ -301,7 +328,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                               'Llegada estimada',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey,
+                                color: AppColors.slateGray,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -311,7 +338,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.grey[800],
+                                color: AppColors.textPrimary,
                               ),
                             ),
                           ],
@@ -323,7 +350,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                               'Tiempo restante',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey,
+                                color: AppColors.slateGray,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -333,7 +360,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.grey[800],
+                                color: AppColors.textPrimary,
                               ),
                             ),
                           ],
@@ -345,27 +372,47 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                     // Botón para confirmar llegada (solo para prueba)
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const ClientArrivalConfirmationScreen(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF8A00),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          gradient: const LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [AppColors.petrolBase, AppColors.petrolDark],
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.petrolDark.withOpacity(0.3),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
-                        child: const Text(
-                          'Confirmar Llegada',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const ClientArrivalConfirmationScreen(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            foregroundColor: AppColors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          child: const Text(
+                            'Confirmar Llegada',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.3,
+                            ),
                           ),
                         ),
                       ),
@@ -386,7 +433,7 @@ class MapBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFFF8A00).withOpacity(0.1)
+      ..color = AppColors.petrolBase.withOpacity(0.08)
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
@@ -410,7 +457,7 @@ class MapBackgroundPainter extends CustomPainter {
 
     // Dibujar algunas líneas diagonales para dar aspecto de mapa
     final diagonalPaint = Paint()
-      ..color = const Color(0xFFFF8A00).withOpacity(0.15)
+      ..color = AppColors.petrolBase.withOpacity(0.12)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 

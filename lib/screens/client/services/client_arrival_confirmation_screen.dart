@@ -1,13 +1,30 @@
 import 'package:flutter/material.dart';
 import 'client_arrived_destination_screen.dart';
 
+// ─────────────────────────────────────────────
+// Paleta de la app: azul petróleo, escalas de azul oscuro,
+// grises y un acento en naranja.
+// (Misma paleta usada en el resto de las pantallas del proyecto.)
+// ─────────────────────────────────────────────
+class AppColors {
+  static const Color background = Color(0xFFF2F5F6);
+  static const Color petrolDark = Color(0xFF0B3B4A);
+  static const Color petrolBase = Color(0xFF12566B);
+  static const Color petrolLight = Color(0xFF1D7A94);
+  static const Color slateGray = Color(0xFF5C6B73);
+  static const Color borderGray = Color(0xFFE1E7E9);
+  static const Color textPrimary = Color(0xFF16262D);
+  static const Color accentOrange = Color(0xFFE8821E);
+  static const Color white = Colors.white;
+}
+
 class ClientArrivalConfirmationScreen extends StatelessWidget {
   const ClientArrivalConfirmationScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -20,12 +37,23 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF8A00).withOpacity(0.1),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.petrolLight, AppColors.petrolDark],
+                  ),
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.petrolDark.withOpacity(0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
                 child: const Icon(
                   Icons.location_pin,
-                  color: Color(0xFFFF8A00),
+                  color: AppColors.white,
                   size: 50,
                 ),
               ),
@@ -38,7 +66,7 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -47,7 +75,7 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.grey[700],
+                  color: AppColors.slateGray,
                   height: 1.5,
                 ),
               ),
@@ -58,11 +86,12 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.white,
                   borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.borderGray, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: AppColors.petrolDark.withOpacity(0.08),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -74,14 +103,15 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                       icon: Icons.attach_money,
                       label: 'Total',
                       value: '\$150.00',
+                      highlight: true,
                     ),
-                    const Divider(height: 32),
+                    Divider(height: 32, color: AppColors.borderGray),
                     _buildInfoRow(
                       icon: Icons.timer_outlined,
                       label: 'Duración',
                       value: '25 min',
                     ),
-                    const Divider(height: 32),
+                    Divider(height: 32, color: AppColors.borderGray),
                     _buildInfoRow(
                       icon: Icons.route,
                       label: 'Distancia',
@@ -95,27 +125,47 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
               // Botón para confirmar
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => const ClientArrivedDestinationScreen(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF8A00),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30),
+                    gradient: const LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [AppColors.petrolBase, AppColors.petrolDark],
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.petrolDark.withOpacity(0.3),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                  child: const Text(
-                    'Confirmar Llegada',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) => const ClientArrivedDestinationScreen(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      foregroundColor: AppColors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    child: const Text(
+                      'Confirmar Llegada',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                      ),
                     ),
                   ),
                 ),
@@ -132,33 +182,42 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
     required IconData icon,
     required String label,
     required String value,
+    bool highlight = false,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
-            Icon(
-              icon,
-              color: const Color(0xFFFF8A00),
-              size: 24,
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.accentOrange.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: AppColors.accentOrange,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
             Text(
               label,
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[700],
+                color: AppColors.slateGray,
               ),
             ),
           ],
         ),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 18,
+          style: TextStyle(
+            fontSize: highlight ? 20 : 18,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: highlight ? AppColors.petrolDark : AppColors.textPrimary,
           ),
         ),
       ],

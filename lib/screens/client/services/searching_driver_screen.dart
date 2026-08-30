@@ -1,6 +1,24 @@
 import 'package:flutter/material.dart';
 import 'client_driver_tracking_screen.dart';
 
+// ─────────────────────────────────────────────
+// Paleta de la app: azul petróleo, escalas de azul oscuro,
+// grises y un acento en naranja.
+// (Misma paleta usada en el resto de las pantallas del proyecto.)
+// ─────────────────────────────────────────────
+class AppColors {
+  static const Color background = Color(0xFFF2F5F6);
+  static const Color petrolDark = Color(0xFF0B3B4A);
+  static const Color petrolBase = Color(0xFF12566B);
+  static const Color petrolLight = Color(0xFF1D7A94);
+  static const Color slateGray = Color(0xFF5C6B73);
+  static const Color borderGray = Color(0xFFE1E7E9);
+  static const Color textPrimary = Color(0xFF16262D);
+  static const Color accentOrange = Color(0xFFE8821E);
+  static const Color white = Colors.white;
+  static const Color danger = Color(0xFFC0392B);
+}
+
 class SearchingDriverScreen extends StatefulWidget {
   const SearchingDriverScreen({super.key});
 
@@ -47,15 +65,15 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
     return Scaffold(
       body: Stack(
         children: [
-          // Fondo del mapa (simplificado)
+          // Fondo del mapa (simplificado) — ahora en tonos azul petróleo
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFFE8F5E9),
-                  Color(0xFFC8E6C9),
+                  AppColors.background,
+                  Color(0xFFDCE6E9),
                 ],
               ),
             ),
@@ -74,18 +92,18 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: AppColors.petrolDark.withOpacity(0.12),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.menu, color: Colors.black87),
+                      icon: const Icon(Icons.menu, color: AppColors.textPrimary),
                       onPressed: () {},
                     ),
                   ),
@@ -94,23 +112,24 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFFF8A00),
+                      color: AppColors.petrolDark,
+                      letterSpacing: 0.2,
                     ),
                   ),
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: AppColors.petrolDark.withOpacity(0.12),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.notifications_outlined, color: Colors.black87),
+                      icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
                       onPressed: () {},
                     ),
                   ),
@@ -131,27 +150,31 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                       width: 80 * _scaleAnimation.value,
                       height: 80 * _scaleAnimation.value,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF8A00).withOpacity(_opacityAnimation.value),
+                        color: AppColors.petrolBase.withOpacity(_opacityAnimation.value * 0.6),
                         shape: BoxShape.circle,
                       ),
                     ),
                     Container(
                       width: 60,
                       height: 60,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFF8A00),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [AppColors.petrolLight, AppColors.petrolDark],
+                        ),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Color(0xFFFF8A00),
-                            blurRadius: 12,
+                            color: AppColors.petrolBase.withOpacity(0.5),
+                            blurRadius: 14,
                             spreadRadius: 2,
                           ),
                         ],
                       ),
                       child: const Icon(
                         Icons.location_pin,
-                        color: Colors.white,
+                        color: AppColors.white,
                         size: 32,
                       ),
                     ),
@@ -167,12 +190,13 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
             child: Container(
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.white,
                 borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.borderGray, width: 1),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 16,
+                    color: AppColors.petrolDark.withOpacity(0.12),
+                    blurRadius: 20,
                     offset: const Offset(0, -4),
                   ),
                 ],
@@ -188,14 +212,15 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
+                    const Text(
                       'Estamos encontrando el mejor conductor para ti',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey[600],
+                        color: AppColors.slateGray,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -211,20 +236,20 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                           builder: (context, value, child) {
                             return LinearProgressIndicator(
                               value: value,
-                              backgroundColor: Colors.grey[200],
+                              backgroundColor: AppColors.borderGray,
                               valueColor: const AlwaysStoppedAnimation<Color>(
-                                Color(0xFFFF8A00),
+                                AppColors.accentOrange,
                               ),
                             );
                           },
                           onEnd: () {
                             // Navegar a la pantalla de seguimiento después de encontrar el conductor
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ClientDriverTrackingScreen(),
-                      ),
-                    );
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ClientDriverTrackingScreen(),
+                              ),
+                            );
                           },
                         ),
                       ),
@@ -235,15 +260,24 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF5F7FA),
+                        color: AppColors.background,
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.borderGray, width: 1),
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.directions_car_outlined,
-                            color: Color(0xFFFF8A00),
-                            size: 32,
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: AppColors.accentOrange.withOpacity(0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.directions_car_outlined,
+                              color: AppColors.accentOrange,
+                              size: 24,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -255,14 +289,14 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.grey[800],
+                                    color: AppColors.textPrimary,
                                   ),
                                 ),
                                 Text(
                                   'Servicio premium',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey[600],
+                                    color: AppColors.slateGray,
                                   ),
                                 ),
                               ],
@@ -280,12 +314,12 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                       },
                       icon: const Icon(
                         Icons.close,
-                        color: Colors.red,
+                        color: AppColors.danger,
                       ),
                       label: const Text(
                         'Cancelar Solicitud',
                         style: TextStyle(
-                          color: Colors.red,
+                          color: AppColors.danger,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -298,7 +332,6 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
           ),
         ],
       ),
-
     );
   }
 }
@@ -308,7 +341,7 @@ class MapBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFFF8A00).withOpacity(0.1)
+      ..color = AppColors.petrolBase.withOpacity(0.08)
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
@@ -332,7 +365,7 @@ class MapBackgroundPainter extends CustomPainter {
 
     // Dibujar algunas líneas diagonales para dar aspecto de mapa
     final diagonalPaint = Paint()
-      ..color = const Color(0xFFFF8A00).withOpacity(0.15)
+      ..color = AppColors.petrolBase.withOpacity(0.12)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
