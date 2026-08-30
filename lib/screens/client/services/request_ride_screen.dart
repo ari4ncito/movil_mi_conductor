@@ -2,6 +2,23 @@ import 'package:flutter/material.dart';
 import '../client_home_screen.dart';
 import '../../shared/notifications_screen.dart';
 
+// ─────────────────────────────────────────────
+// Paleta de la app: azul petróleo, escalas de azul oscuro,
+// grises y un acento en naranja.
+// (Misma paleta usada en el resto de las pantallas del proyecto.)
+// ─────────────────────────────────────────────
+class AppColors {
+  static const Color background = Color(0xFFF2F5F6);
+  static const Color petrolDark = Color(0xFF0B3B4A);
+  static const Color petrolBase = Color(0xFF12566B);
+  static const Color petrolLight = Color(0xFF1D7A94);
+  static const Color slateGray = Color(0xFF5C6B73);
+  static const Color borderGray = Color(0xFFE1E7E9);
+  static const Color textPrimary = Color(0xFF16262D);
+  static const Color accentOrange = Color(0xFFE8821E);
+  static const Color white = Colors.white;
+}
+
 class RequestRideScreen extends StatelessWidget {
   const RequestRideScreen({super.key});
 
@@ -10,15 +27,15 @@ class RequestRideScreen extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          // Fondo del mapa
+          // Fondo del mapa — azul petróleo oscuro en vez de negro
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.black,
-                  Colors.grey[900]!,
+                  AppColors.petrolDark,
+                  Color(0xFF071F26),
                 ],
               ),
             ),
@@ -40,11 +57,11 @@ class RequestRideScreen extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withOpacity(0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -52,7 +69,7 @@ class RequestRideScreen extends StatelessWidget {
                     ),
                     child: const Icon(
                       Icons.menu,
-                      color: Colors.grey,
+                      color: AppColors.petrolDark,
                       size: 24,
                     ),
                   ),
@@ -63,7 +80,7 @@ class RequestRideScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFFF8A00),
+                      color: AppColors.white,
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -81,11 +98,11 @@ class RequestRideScreen extends StatelessWidget {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withOpacity(0.2),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -93,7 +110,7 @@ class RequestRideScreen extends StatelessWidget {
                       ),
                       child: const Icon(
                         Icons.notifications_outlined,
-                        color: Colors.grey,
+                        color: AppColors.petrolDark,
                         size: 24,
                       ),
                     ),
@@ -107,7 +124,7 @@ class RequestRideScreen extends StatelessWidget {
           Center(
             child: Stack(
               children: [
-                // Marcador azul (ubicación actual)
+                // Marcador (ubicación actual) — azul petróleo claro
                 Positioned(
                   left: MediaQuery.of(context).size.width * 0.35,
                   top: MediaQuery.of(context).size.height * 0.4,
@@ -115,20 +132,30 @@ class RequestRideScreen extends StatelessWidget {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.2),
+                      color: AppColors.petrolLight.withOpacity(0.25),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
                       child: Container(
                         width: 32,
                         height: 32,
-                        decoration: const BoxDecoration(
-                          color: Colors.blue,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [AppColors.petrolLight, AppColors.petrolBase],
+                          ),
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.petrolBase.withOpacity(0.5),
+                              blurRadius: 8,
+                            ),
+                          ],
                         ),
                         child: const Icon(
                           Icons.person,
-                          color: Colors.white,
+                          color: AppColors.white,
                           size: 18,
                         ),
                       ),
@@ -144,21 +171,27 @@ class RequestRideScreen extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF8A00).withOpacity(0.2),
+                      color: AppColors.accentOrange.withOpacity(0.25),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
                       child: Container(
                         width: 24,
                         height: 24,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFF8A00),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentOrange,
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.accentOrange.withOpacity(0.5),
+                              blurRadius: 8,
+                            ),
+                          ],
                         ),
                         child: const Center(
                           child: Icon(
                             Icons.location_pin,
-                            color: Colors.white,
+                            color: AppColors.white,
                             size: 14,
                           ),
                         ),
@@ -176,12 +209,12 @@ class RequestRideScreen extends StatelessWidget {
             child: Container(
               margin: const EdgeInsets.only(bottom: 20, left: 16, right: 16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.white,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 12,
+                    color: Colors.black.withOpacity(0.25),
+                    blurRadius: 16,
                     offset: const Offset(0, -2),
                   ),
                 ],
@@ -207,12 +240,16 @@ class RequestRideScreen extends StatelessWidget {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: Colors.grey[200],
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [AppColors.petrolLight, AppColors.petrolDark],
+                            ),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
                             Icons.directions_car_outlined,
-                            color: Colors.grey,
+                            color: AppColors.white,
                             size: 24,
                           ),
                         ),
@@ -224,7 +261,7 @@ class RequestRideScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ),
@@ -233,12 +270,12 @@ class RequestRideScreen extends StatelessWidget {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF5F7FA),
+                            color: AppColors.accentOrange.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
                             Icons.chevron_right,
-                            color: Colors.black87,
+                            color: AppColors.accentOrange,
                             size: 28,
                           ),
                         ),
@@ -260,7 +297,7 @@ class MapGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFB8860B).withOpacity(0.15)
+      ..color = AppColors.petrolLight.withOpacity(0.18)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
@@ -284,7 +321,7 @@ class MapGridPainter extends CustomPainter {
 
     // Líneas diagonales
     final diagonalPaint = Paint()
-      ..color = const Color(0xFFCD853F).withOpacity(0.1)
+      ..color = AppColors.accentOrange.withOpacity(0.1)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 

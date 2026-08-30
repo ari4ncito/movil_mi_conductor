@@ -1,12 +1,29 @@
 import 'package:flutter/material.dart';
 
+// ============================================================
+// PALETA DE COLORES — Azul Petróleo (misma paleta del proyecto)
+// ============================================================
+
+class AppColors {
+  static const Color petrol = Color(0xFF0F3D44);
+  static const Color petrolDark = Color(0xFF0A2A30);
+  static const Color petrolLight = Color(0xFF1B5A63);
+  static const Color slate = Color(0xFF334A52);
+  static const Color background = Color(0xFFF2F5F6);
+  static const Color cardBackground = Colors.white;
+  static const Color border = Color(0xFFDDE4E6);
+  static const Color textPrimary = Color(0xFF1C2B2F);
+  static const Color textSecondary = Color(0xFF6B7C80);
+  static const Color accent = Color(0xFFE8862E);
+}
+
 class ClientHistoryScreen extends StatelessWidget {
   const ClientHistoryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F8),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -14,46 +31,56 @@ class ClientHistoryScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
+
               const Text(
                 'Historial de\nServicios',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: AppColors.petrolDark,
+                  letterSpacing: 0.2,
                 ),
               ),
+
               const SizedBox(height: 8),
+
               Text(
                 'Viajes realizados y pedidos anteriores',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[600],
+                  color: AppColors.textSecondary,
                 ),
               ),
+
               const SizedBox(height: 24),
-              // Tarjetas de stats
+
+              // Tarjetas de estadísticas
               Row(
                 children: [
                   Expanded(
                     child: _buildStatCard(
-                      icon: Icons.attach_money,
-                      value: '\$1,240.50',
-                      label: 'Gastos Totales',
-                      color: const Color(0xFFFF8A00),
+                      icon: Icons.check_circle_outline,
+                      value: '84',
+                      label: 'Servicios Completados',
+                      color: AppColors.petrol,
                     ),
                   ),
+
                   const SizedBox(width: 12),
+
                   Expanded(
                     child: _buildStatCard(
                       icon: Icons.directions_car,
                       value: '84',
                       label: 'Viajes',
-                      color: const Color(0xFF4A90E2),
+                      color: AppColors.petrolLight,
                     ),
                   ),
                 ],
               ),
+
               const SizedBox(height: 12),
+
               Row(
                 children: [
                   Expanded(
@@ -61,60 +88,83 @@ class ClientHistoryScreen extends StatelessWidget {
                       icon: Icons.route,
                       value: '156.4 km',
                       label: 'Distancia Recorrida',
-                      color: const Color(0xFF2E8B57),
+                      color: AppColors.slate,
                     ),
                   ),
+
                   const SizedBox(width: 12),
+
                   Expanded(
                     child: _buildStatCard(
                       icon: Icons.star,
                       value: '4.95',
                       label: 'Calificación Promedio',
-                      color: const Color(0xFFFFB800),
+                      color: AppColors.accent,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+
+              const SizedBox(height: 28),
+
               // Lista de viajes
-              const Text(
-                'Viajes Recientes',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 3,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  const Text(
+                    'Viajes Recientes',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
               ),
+
               const SizedBox(height: 16),
+
               // Tarjeta de viaje 1
               _buildTripCard(
                 date: 'Hoy, 14:30',
                 driver: 'Alejandro S.',
                 from: 'Torre Virreyes, Pedregal 24',
                 to: 'Aeropuerto Internacional',
-                amount: '\$42.50',
                 rating: 5,
               ),
+
               const SizedBox(height: 12),
+
               // Tarjeta de viaje 2
               _buildTripCard(
                 date: 'Hoy, 12:15',
                 driver: 'Marcio Hernandez',
                 from: 'Centro Histórico',
                 to: 'Zona Rosa',
-                amount: '\$28.00',
                 rating: 5,
               ),
+
               const SizedBox(height: 12),
+
               // Tarjeta de viaje 3
               _buildTripCard(
                 date: 'Ayer, 19:45',
                 driver: 'Carla M.',
                 from: 'Condesa',
                 to: 'Polanco',
-                amount: '\$35.50',
                 rating: 4,
               ),
+
               const SizedBox(height: 24),
             ],
           ),
@@ -132,11 +182,12 @@ class ClientHistoryScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: AppColors.petrolDark.withOpacity(0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -156,16 +207,18 @@ class ClientHistoryScreen extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 4),
+
                 Text(
                   label,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 2,
@@ -174,13 +227,19 @@ class ClientHistoryScreen extends StatelessWidget {
               ],
             ),
           ),
+
           const SizedBox(width: 12),
+
           Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
               color: color.withOpacity(0.15),
               shape: BoxShape.circle,
+              border: Border.all(
+                color: color.withOpacity(0.25),
+                width: 1,
+              ),
             ),
             child: Icon(
               icon,
@@ -198,17 +257,17 @@ class ClientHistoryScreen extends StatelessWidget {
     required String driver,
     required String from,
     required String to,
-    required String amount,
     required int rating,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: AppColors.petrolDark.withOpacity(0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -225,32 +284,39 @@ class ClientHistoryScreen extends StatelessWidget {
                   date,
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[500],
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                amount,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFFF8A00),
-                ),
-              ),
             ],
           ),
+
           const SizedBox(height: 12),
+
           Row(
             children: [
               Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF8A00),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.petrolLight,
+                      AppColors.petrolDark,
+                    ],
+                  ),
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.petrolDark.withOpacity(0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: const Icon(
                   Icons.drive_eta,
@@ -258,7 +324,9 @@ class ClientHistoryScreen extends StatelessWidget {
                   size: 28,
                 ),
               ),
+
               const SizedBox(width: 12),
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,11 +336,13 @@ class ClientHistoryScreen extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black,
+                        color: AppColors.textPrimary,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
+
                     const SizedBox(height: 4),
+
                     Row(
                       children: [
                         for (int i = 0; i < 5; i++)
@@ -281,7 +351,7 @@ class ClientHistoryScreen extends StatelessWidget {
                             child: Icon(
                               Icons.star,
                               color: i < rating
-                                  ? const Color(0xFFFFB800)
+                                  ? AppColors.accent
                                   : Colors.grey[300],
                               size: 16,
                             ),
@@ -293,7 +363,17 @@ class ClientHistoryScreen extends StatelessWidget {
               ),
             ],
           ),
+
           const SizedBox(height: 16),
+
+          Container(
+            width: double.infinity,
+            height: 1,
+            color: AppColors.border,
+          ),
+
+          const SizedBox(height: 16),
+
           // Ruta
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,26 +384,30 @@ class ClientHistoryScreen extends StatelessWidget {
                     width: 10,
                     height: 10,
                     decoration: const BoxDecoration(
-                      color: Colors.green,
+                      color: AppColors.petrolLight,
                       shape: BoxShape.circle,
                     ),
                   ),
+
                   Container(
                     width: 2,
                     height: 24,
-                    color: Colors.grey[300],
+                    color: AppColors.border,
                   ),
+
                   Container(
                     width: 10,
                     height: 10,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFFF8A00),
+                      color: AppColors.accent,
                       shape: BoxShape.circle,
                     ),
                   ),
                 ],
               ),
+
               const SizedBox(width: 12),
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,18 +416,20 @@ class ClientHistoryScreen extends StatelessWidget {
                       from,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey[700],
+                        color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 2,
                     ),
+
                     const SizedBox(height: 8),
+
                     Text(
                       to,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey[700],
+                        color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                       overflow: TextOverflow.ellipsis,

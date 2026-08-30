@@ -1,6 +1,23 @@
 import 'package:flutter/material.dart';
 import '../client_section.dart';
 
+// ─────────────────────────────────────────────
+// Paleta de la app: azul petróleo, escalas de azul oscuro,
+// grises y un acento en naranja.
+// (Misma paleta usada en el resto de las pantallas del proyecto.)
+// ─────────────────────────────────────────────
+class AppColors {
+  static const Color background = Color(0xFFF2F5F6);
+  static const Color petrolDark = Color(0xFF0B3B4A);
+  static const Color petrolBase = Color(0xFF12566B);
+  static const Color petrolLight = Color(0xFF1D7A94);
+  static const Color slateGray = Color(0xFF5C6B73);
+  static const Color borderGray = Color(0xFFE1E7E9);
+  static const Color textPrimary = Color(0xFF16262D);
+  static const Color accentOrange = Color(0xFFE8821E);
+  static const Color white = Colors.white;
+}
+
 class ClientArrivedDestinationScreen extends StatefulWidget {
   const ClientArrivedDestinationScreen({super.key});
 
@@ -16,7 +33,7 @@ class _ClientArrivedDestinationScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F8),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -28,23 +45,31 @@ class _ClientArrivedDestinationScreenState
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.white,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.borderGray, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: AppColors.petrolDark.withOpacity(0.08),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: const Text(
-                  'Has llegado al destino',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.check_circle, size: 16, color: AppColors.accentOrange),
+                    SizedBox(width: 6),
+                    Text(
+                      'Has llegado al destino',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 40),
@@ -52,13 +77,24 @@ class _ClientArrivedDestinationScreenState
               Container(
                 width: 80,
                 height: 80,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFF8A00),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.petrolLight, AppColors.petrolDark],
+                  ),
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.petrolDark.withOpacity(0.25),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: const Icon(
                   Icons.person,
-                  color: Colors.white,
+                  color: AppColors.white,
                   size: 40,
                 ),
               ),
@@ -68,7 +104,7 @@ class _ClientArrivedDestinationScreenState
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -77,7 +113,7 @@ class _ClientArrivedDestinationScreenState
                 children: [
                   const Icon(
                     Icons.star,
-                    color: Color(0xFFFFB800),
+                    color: AppColors.accentOrange,
                     size: 18,
                   ),
                   const SizedBox(width: 4),
@@ -85,7 +121,7 @@ class _ClientArrivedDestinationScreenState
                     '4.9 · 240 viajes',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[600],
+                      color: AppColors.slateGray,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -116,7 +152,7 @@ class _ClientArrivedDestinationScreenState
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 20),
@@ -134,7 +170,7 @@ class _ClientArrivedDestinationScreenState
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: Icon(
                           i <= _rating ? Icons.star : Icons.star_border,
-                          color: const Color(0xFFFFB800),
+                          color: AppColors.accentOrange,
                           size: 48,
                         ),
                       ),
@@ -145,28 +181,48 @@ class _ClientArrivedDestinationScreenState
               // Finalizar viaje button
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (context) => const ClientSection(isGuest: false),
-                      ),
-                      (route) => false,
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF8A00),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30),
+                    gradient: const LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [AppColors.petrolBase, AppColors.petrolDark],
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.petrolDark.withOpacity(0.3),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                  child: const Text(
-                    'Finalizar Servicio',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (context) => const ClientSection(isGuest: false),
+                        ),
+                        (route) => false,
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      foregroundColor: AppColors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    child: const Text(
+                      'Finalizar Servicio',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
                     ),
                   ),
                 ),
@@ -179,12 +235,31 @@ class _ClientArrivedDestinationScreenState
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('Reportar Servicio'),
-                      content: const TextField(
+                      backgroundColor: AppColors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      title: const Text(
+                        'Reportar Servicio',
+                        style: TextStyle(color: AppColors.textPrimary),
+                      ),
+                      content: TextField(
                         maxLines: 4,
                         decoration: InputDecoration(
                           hintText: 'Describe el problema...',
-                          border: OutlineInputBorder(),
+                          hintStyle: const TextStyle(color: AppColors.slateGray),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.borderGray),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.borderGray),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.petrolBase, width: 2),
+                          ),
                         ),
                       ),
                       actions: [
@@ -192,12 +267,18 @@ class _ClientArrivedDestinationScreenState
                           onPressed: () {
                             Navigator.of(context).pop();
                           },
-                          child: const Text('Cancelar'),
+                          child: const Text(
+                            'Cancelar',
+                            style: TextStyle(color: AppColors.slateGray),
+                          ),
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF8A00),
-                            foregroundColor: Colors.white,
+                            backgroundColor: AppColors.petrolDark,
+                            foregroundColor: AppColors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           onPressed: () {
                             Navigator.of(context).pop();
@@ -212,7 +293,7 @@ class _ClientArrivedDestinationScreenState
                   'Reportar problema',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey[600],
+                    color: AppColors.slateGray,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -232,11 +313,12 @@ class _ClientArrivedDestinationScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.borderGray, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: AppColors.petrolDark.withOpacity(0.08),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -244,10 +326,18 @@ class _ClientArrivedDestinationScreenState
       ),
       child: Column(
         children: [
-          Icon(
-            icon,
-            color: const Color(0xFFFF8A00),
-            size: 32,
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.accentOrange.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: AppColors.accentOrange,
+              size: 24,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -255,7 +345,7 @@ class _ClientArrivedDestinationScreenState
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
@@ -263,7 +353,7 @@ class _ClientArrivedDestinationScreenState
             label,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey[600],
+              color: AppColors.slateGray,
               fontWeight: FontWeight.w500,
             ),
           ),

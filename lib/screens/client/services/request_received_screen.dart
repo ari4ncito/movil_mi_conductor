@@ -1,18 +1,35 @@
 import 'package:flutter/material.dart';
 import '../../driver/services_driver/driver_assigned_screen.dart';
 
+// ─────────────────────────────────────────────
+// Paleta de la app: azul petróleo, escalas de azul oscuro,
+// grises y un acento en naranja.
+// (Misma paleta usada en el resto de las pantallas del proyecto.)
+// ─────────────────────────────────────────────
+class AppColors {
+  static const Color background = Color(0xFFF2F5F6);
+  static const Color petrolDark = Color(0xFF0B3B4A);
+  static const Color petrolBase = Color(0xFF12566B);
+  static const Color petrolLight = Color(0xFF1D7A94);
+  static const Color slateGray = Color(0xFF5C6B73);
+  static const Color borderGray = Color(0xFFE1E7E9);
+  static const Color textPrimary = Color(0xFF16262D);
+  static const Color accentOrange = Color(0xFFE8821E);
+  static const Color white = Colors.white;
+}
+
 class RequestReceivedScreen extends StatelessWidget {
   const RequestReceivedScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF3E0), // Fondo naranja claro
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFFF3E0),
+        backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () {
             Navigator.of(context).pop();
           },
@@ -22,7 +39,7 @@ class RequestReceivedScreen extends StatelessWidget {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: AppColors.petrolDark,
           ),
         ),
         centerTitle: true,
@@ -35,11 +52,12 @@ class RequestReceivedScreen extends StatelessWidget {
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.white,
                   borderRadius: BorderRadius.circular(32),
+                  border: Border.all(color: AppColors.borderGray, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: AppColors.petrolDark.withOpacity(0.1),
                       blurRadius: 20,
                       offset: const Offset(0, 4),
                     ),
@@ -54,13 +72,24 @@ class RequestReceivedScreen extends StatelessWidget {
                       Container(
                         width: 100,
                         height: 100,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFF8A00),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [AppColors.petrolLight, AppColors.petrolDark],
+                          ),
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.petrolDark.withOpacity(0.3),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
                         child: const Icon(
                           Icons.directions_car,
-                          color: Colors.white,
+                          color: AppColors.white,
                           size: 50,
                         ),
                       ),
@@ -73,7 +102,7 @@ class RequestReceivedScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: AppColors.textPrimary,
                           height: 1.2,
                         ),
                       ),
@@ -86,12 +115,14 @@ class RequestReceivedScreen extends StatelessWidget {
                             icon: Icons.location_on,
                             label1: 'ORIGEN',
                             label2: 'Torre Virreyes, Pedregal 24',
+                            color: AppColors.petrolBase,
                           ),
                           const SizedBox(height: 16),
                           _buildTripInfoChip(
                             icon: Icons.location_pin,
                             label1: 'DESTINO',
                             label2: 'Aeropuerto Internacional',
+                            color: AppColors.accentOrange,
                           ),
                           const SizedBox(height: 16),
                           Row(
@@ -113,7 +144,6 @@ class RequestReceivedScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-
                         ],
                       ),
                       const SizedBox(height: 48),
@@ -121,28 +151,48 @@ class RequestReceivedScreen extends StatelessWidget {
                       // Botón Entendido
                       SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            // Ir a pantalla de conductor asignado
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (context) => const DriverAssignedScreen(),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF8A00),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(30),
+                            gradient: const LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [AppColors.petrolBase, AppColors.petrolDark],
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.petrolDark.withOpacity(0.3),
+                                blurRadius: 14,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
                           ),
-                          child: const Text(
-                            'Entendido',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              // Ir a pantalla de conductor asignado
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (context) => const DriverAssignedScreen(),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: AppColors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: const Text(
+                              'Entendido',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
                             ),
                           ),
                         ),
@@ -168,8 +218,9 @@ class RequestReceivedScreen extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FA),
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderGray, width: 1),
       ),
       child: Row(
         children: [
@@ -177,12 +228,12 @@ class RequestReceivedScreen extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color?.withOpacity(0.15) ?? const Color(0xFFE0E0E0),
+              color: color?.withOpacity(0.15) ?? AppColors.borderGray,
               shape: BoxShape.circle,
             ),
             child: Icon(
               icon,
-              color: color ?? Colors.grey[700],
+              color: color ?? AppColors.slateGray,
               size: 24,
             ),
           ),
@@ -195,7 +246,7 @@ class RequestReceivedScreen extends StatelessWidget {
                   label1,
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[500],
+                    color: AppColors.slateGray,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.8,
                   ),
@@ -206,7 +257,7 @@ class RequestReceivedScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: color ?? Colors.grey[800],
+                    color: color ?? AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -225,8 +276,9 @@ class RequestReceivedScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FA),
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderGray, width: 1),
       ),
       child: Column(
         children: [
@@ -234,12 +286,13 @@ class RequestReceivedScreen extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.white,
               shape: BoxShape.circle,
+              border: Border.all(color: AppColors.borderGray, width: 1),
             ),
             child: Icon(
               icon,
-              color: const Color(0xFFFF8A00),
+              color: AppColors.accentOrange,
               size: 22,
             ),
           ),
@@ -248,7 +301,7 @@ class RequestReceivedScreen extends StatelessWidget {
             label1,
             style: TextStyle(
               fontSize: 10,
-              color: Colors.grey[500],
+              color: AppColors.slateGray,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.6,
             ),
@@ -259,7 +312,7 @@ class RequestReceivedScreen extends StatelessWidget {
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
         ],
