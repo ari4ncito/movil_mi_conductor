@@ -5,6 +5,7 @@ import '../shared/help_support_screen.dart';
 import '../shared/settings_screen.dart';
 import '../shared/terms_policies_screen.dart';
 import '../auth/login_screen.dart';
+import '../../services/auth_service.dart';
 
 // ─────────────────────────────────────────────
 // Paleta de la app: azul petróleo, escalas de azul oscuro,
@@ -250,14 +251,18 @@ class ClientProfileScreen extends StatelessWidget {
                     ],
                   ),
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (context) => const LoginScreen(),
-                        ),
-                        (route) => false,
-                      );
-                    },
+                    onPressed: () async {
+                    await AuthService.logout();
+
+                    if (!context.mounted) return;
+
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                      (route) => false,
+                    );
+                  },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
