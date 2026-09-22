@@ -5,6 +5,7 @@ import '../driver/driver_section.dart';
 import 'register_screen.dart';
 import '../guest/guest_welcome_screen.dart';
 import 'forgot_password_screen.dart';
+import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,19 +20,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // Hardcoded credentials
-  static const String _clientEmail = 'cliente@example.com';
-  static const String _clientPassword = 'cliente123';
-  static const String _driverEmail = 'conductor@example.com';
-  static const String _driverPassword = 'conductor123';
+  
 
-  void _login() async {
+  Future<void> _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, completa todos los campos')),
+        const SnackBar(
+          content: Text(
+            'Por favor, completa todos los campos',
+          ),
+        ),
       );
       return;
     }
@@ -40,36 +41,65 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    // Simulate login
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final resultado = await AuthService.login(
+        email,
+        password,
+      );
 
-    setState(() {
-      _isLoading = false;
-    });
+      final usuario = resultado['usuario'];
 
-    // Validate credentials
-    if (email == _clientEmail && password == _clientPassword) {
-      // Navigate to client section
-      if (mounted) {
+      final String rol = usuario['rol'];
+      final String token = resultado['token'];
+
+      print('Token: $token');
+      print('Usuario: ${usuario['nombre']}');
+      print('Rol: $rol');
+
+      if (!mounted) return;
+
+      if (rol == 'CLIENTE') {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const ClientSection(isGuest: false)),
+          MaterialPageRoute(
+            builder: (context) =>
+                const ClientSection(isGuest: false),
+          ),
           (route) => false,
         );
-      }
-    } else if (email == _driverEmail && password == _driverPassword) {
-      // Navigate to driver section
-      if (mounted) {
+      } else if (rol == 'CONDUCTOR') {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const DriverSection()),
+          MaterialPageRoute(
+            builder: (context) => const DriverSection(),
+          ),
           (route) => false,
         );
-      }
-    } else {
-      // Invalid credentials
-      if (mounted) {
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Correo o contraseña incorrectos')),
+          const SnackBar(
+            content: Text(
+              'Este usuario no tiene acceso a la aplicación móvil.',
+            ),
+          ),
         );
+      }
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst(
+              'Exception: ',
+              '',
+            ),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }

@@ -5,6 +5,7 @@ import '../auth/login_screen.dart';
 import '../shared/edit_profile_screen.dart';
 import '../shared/help_support_screen.dart';
 import '../shared/settings_screen.dart';
+import '../../services/auth_service.dart';
 
 class DriverSection extends StatefulWidget {
   const DriverSection({super.key});
@@ -276,7 +277,11 @@ class _DriverProfileScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    await AuthService.logout();
+
+                    if (!context.mounted) return;
+
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (context) => const LoginScreen(),
