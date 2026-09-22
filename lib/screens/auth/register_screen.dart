@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '/widgets/custom_text_field.dart';
 import '../../services/auth_service.dart';
-import '../client/client_section.dart';
 import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {

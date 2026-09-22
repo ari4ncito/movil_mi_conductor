@@ -202,7 +202,6 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
 
     final token = prefs.getString('token');
-    final usuario = prefs.getString('usuario'); 
 
     return token != null && token.isNotEmpty;
   }
