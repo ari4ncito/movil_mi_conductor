@@ -1,7 +1,45 @@
 import 'package:flutter/material.dart';
+import '../../models/novedad.dart';
+import '../../services/http_client.dart';
+import '../../services/novedad_service.dart';
 
-class NotificationsScreen extends StatelessWidget {
-  const NotificationsScreen({super.key});
+class NotificationsScreen extends StatefulWidget {
+  final NovedadService? novedadService;
+
+  const NotificationsScreen({super.key, this.novedadService});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  late final NovedadService _service =
+      widget.novedadService ?? NovedadService();
+  List<Novedad> _novedades = const [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNovedades();
+  }
+
+  Future<void> _loadNovedades() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      _novedades = await _service.listar();
+    } on ApiException catch (error) {
+      _error = error.message;
+    } catch (_) {
+      _error = 'No se pudieron cargar las notificaciones.';
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,66 +153,35 @@ class NotificationsScreen extends StatelessWidget {
 
               const SizedBox(height: 32),
 
-              // SERVICIOS section
-              const Text(
-                'SERVICIOS',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.grey,
-                  letterSpacing: 1.2,
+              if (_isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_error != null)
+                _buildStatusMessage(_error!, onRetry: _loadNovedades)
+              else if (_novedades.isEmpty)
+                _buildStatusMessage('No tienes notificaciones nuevas.')
+              else ...[
+                const Text(
+                  'NOVEDADES',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.grey,
+                    letterSpacing: 1.2,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              _NotificationCard(
-                icon: Icons.notifications_outlined,
-                iconColor: const Color(0xFFFF8A00),
-                title: 'Nueva solicitud de viaje',
-                time: 'Hace 2 min',
-                description: 'Un pasajero solicita un servicio Premium hacia el Aeropuerto Internacional.',
-              ),
-
-              const SizedBox(height: 32),
-
-              // GANANCIAS section
-              const Text(
-                'GANANCIAS',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.grey,
-                  letterSpacing: 1.2,
+                const SizedBox(height: 12),
+                ..._novedades.map(
+                  (novedad) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildNotificationCard(novedad),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              _NotificationCard(
-                icon: Icons.account_balance_wallet_outlined,
-                iconColor: const Color(0xFFFF8A00),
-                title: 'Depósito procesado',
-                time: 'Hace 3 h',
-                description: 'Se ha transferido exitosamente el balance de la semana anterior a tu cuenta vinculada.',
-              ),
-
-              const SizedBox(height: 32),
-
-              // SISTEMA section
-              const Text(
-                'SISTEMA',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.grey,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _NotificationCard(
-                icon: Icons.info_outline_rounded,
-                iconColor: Colors.grey[400]!,
-                title: 'Actualización de términos',
-                time: 'Ayer',
-                description: 'Hemos actualizado nuestras políticas de seguridad para mejorar la experiencia Lumière.',
-              ),
+              ],
 
               const SizedBox(height: 40),
             ],
@@ -182,6 +189,46 @@ class NotificationsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildStatusMessage(String message, {VoidCallback? onRetry}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Column(
+          children: [
+            Text(message, textAlign: TextAlign.center),
+            if (onRetry != null) ...[
+              const SizedBox(height: 12),
+              TextButton(onPressed: onRetry, child: const Text('Reintentar')),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationCard(Novedad novedad) {
+    final type = (novedad.tipo ?? '').toLowerCase();
+    final isSystem = type.contains('sistema') || type.contains('término');
+    return _NotificationCard(
+      icon: isSystem
+          ? Icons.info_outline_rounded
+          : Icons.notifications_outlined,
+      iconColor: isSystem ? Colors.grey : const Color(0xFFFF8A00),
+      title: novedad.tipo ?? 'Novedad',
+      time: _formatDate(novedad.createdAt ?? novedad.updatedAt),
+      description: novedad.descripcion ?? 'Novedad sin descripción.',
+    );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Fecha no disponible';
+    final local = date.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/${local.year} '
+        '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -226,11 +273,7 @@ class _NotificationCard extends StatelessWidget {
               color: iconColor.withOpacity(0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: iconColor,
-              size: 28,
-            ),
+            child: Icon(icon, color: iconColor, size: 28),
           ),
           const SizedBox(width: 16),
           Expanded(

@@ -1,18 +1,34 @@
 import 'package:flutter/material.dart';
+import '../../../models/novedad.dart';
+import '../../../services/http_client.dart';
+import '../../../services/novedad_service.dart';
 
 class DriverReportNoveltyScreen extends StatefulWidget {
-  const DriverReportNoveltyScreen({super.key});
+  final String? solicitudId;
+  final String? conductorId;
+  final String? usuarioId;
+  final NovedadService? novedadService;
+
+  const DriverReportNoveltyScreen({
+    super.key,
+    this.solicitudId,
+    this.conductorId,
+    this.usuarioId,
+    this.novedadService,
+  });
 
   @override
   State<DriverReportNoveltyScreen> createState() =>
       _DriverReportNoveltyScreenState();
 }
 
-class _DriverReportNoveltyScreenState
-    extends State<DriverReportNoveltyScreen> {
+class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
   String? _selectedNovelty;
   final TextEditingController _detailsController = TextEditingController();
   bool _hasPhoto = false;
+  bool _isCreating = false;
+  late final NovedadService _novedadService =
+      widget.novedadService ?? NovedadService();
 
   final List<String> _novelties = [
     'Tráfico pesado',
@@ -26,6 +42,54 @@ class _DriverReportNoveltyScreenState
   void dispose() {
     _detailsController.dispose();
     super.dispose();
+  }
+
+  Future<void> _createNovedad() async {
+    final usuarioId = widget.usuarioId?.trim();
+    if (usuarioId == null || usuarioId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No se puede crear la novedad: falta el ID del usuario que la registra.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isCreating = true);
+    try {
+      await _novedadService.crearNovedad(
+        Novedad(
+          solicitudId: widget.solicitudId,
+          conductorId: widget.conductorId,
+          usuarioRegistroId: usuarioId,
+          tipo: _selectedNovelty,
+          descripcion: _detailsController.text.trim().isEmpty
+              ? _selectedNovelty
+              : _detailsController.text.trim(),
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Novedad reportada exitosamente.')),
+      );
+      Navigator.pop(context);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo reportar la novedad.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isCreating = false);
+    }
   }
 
   @override
@@ -101,7 +165,9 @@ class _DriverReportNoveltyScreenState
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 16),
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
@@ -294,14 +360,8 @@ class _DriverReportNoveltyScreenState
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _selectedNovelty != null
-                      ? () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Novedad reportada exitosamente!')),
-                          );
-                          Navigator.pop(context);
-                        }
+                  onPressed: _selectedNovelty != null && !_isCreating
+                      ? _createNovedad
                       : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF8A00),
@@ -312,13 +372,22 @@ class _DriverReportNoveltyScreenState
                       borderRadius: BorderRadius.circular(28),
                     ),
                   ),
-                  child: const Text(
-                    'Reportar Novedad',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  child: _isCreating
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Reportar Novedad',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                 ),
               ),
             ],

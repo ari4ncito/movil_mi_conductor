@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'client_driver_tracking_screen.dart';
+import '../../../models/solicitud.dart';
 
 // ─────────────────────────────────────────────
 // Paleta de la app: azul petróleo, escalas de azul oscuro,
@@ -20,13 +21,16 @@ class AppColors {
 }
 
 class SearchingDriverScreen extends StatefulWidget {
-  const SearchingDriverScreen({super.key});
+  final Solicitud? solicitud;
+
+  const SearchingDriverScreen({super.key, this.solicitud});
 
   @override
   State<SearchingDriverScreen> createState() => _SearchingDriverScreenState();
 }
 
-class _SearchingDriverScreenState extends State<SearchingDriverScreen> with SingleTickerProviderStateMixin {
+class _SearchingDriverScreenState extends State<SearchingDriverScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
@@ -40,17 +44,11 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
     )..repeat(reverse: true);
 
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
     _opacityAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
   }
 
@@ -71,10 +69,7 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  AppColors.background,
-                  Color(0xFFDCE6E9),
-                ],
+                colors: [AppColors.background, Color(0xFFDCE6E9)],
               ),
             ),
             child: CustomPaint(
@@ -103,7 +98,10 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                       ],
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.menu, color: AppColors.textPrimary),
+                      icon: const Icon(
+                        Icons.menu,
+                        color: AppColors.textPrimary,
+                      ),
                       onPressed: () {},
                     ),
                   ),
@@ -129,7 +127,10 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                       ],
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
+                      icon: const Icon(
+                        Icons.notifications_outlined,
+                        color: AppColors.textPrimary,
+                      ),
                       onPressed: () {},
                     ),
                   ),
@@ -150,7 +151,9 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                       width: 80 * _scaleAnimation.value,
                       height: 80 * _scaleAnimation.value,
                       decoration: BoxDecoration(
-                        color: AppColors.petrolBase.withOpacity(_opacityAnimation.value * 0.6),
+                        color: AppColors.petrolBase.withOpacity(
+                          _opacityAnimation.value * 0.6,
+                        ),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -247,7 +250,8 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const ClientDriverTrackingScreen(),
+                                builder: (context) =>
+                                    const ClientDriverTrackingScreen(),
                               ),
                             );
                           },
@@ -258,11 +262,17 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
 
                     // Información del vehículo
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.background,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.borderGray, width: 1),
+                        border: Border.all(
+                          color: AppColors.borderGray,
+                          width: 1,
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -312,10 +322,7 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen> with Sing
                       onPressed: () {
                         Navigator.of(context).pop();
                       },
-                      icon: const Icon(
-                        Icons.close,
-                        color: AppColors.danger,
-                      ),
+                      icon: const Icon(Icons.close, color: AppColors.danger),
                       label: const Text(
                         'Cancelar Solicitud',
                         style: TextStyle(
@@ -347,20 +354,12 @@ class MapBackgroundPainter extends CustomPainter {
 
     // Dibujar líneas horizontales
     for (double i = 0; i < size.height; i += 40) {
-      canvas.drawLine(
-        Offset(0, i),
-        Offset(size.width, i),
-        paint,
-      );
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
     }
 
     // Dibujar líneas verticales
     for (double i = 0; i < size.width; i += 40) {
-      canvas.drawLine(
-        Offset(i, 0),
-        Offset(i, size.height),
-        paint,
-      );
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
     }
 
     // Dibujar algunas líneas diagonales para dar aspecto de mapa
