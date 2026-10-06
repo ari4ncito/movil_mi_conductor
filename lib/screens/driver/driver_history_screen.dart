@@ -1,7 +1,50 @@
 import 'package:flutter/material.dart';
+import '../../models/solicitud.dart';
+import '../../services/http_client.dart';
+import '../../services/solicitud_service.dart';
 
-class DriverHistoryScreen extends StatelessWidget {
-  const DriverHistoryScreen({super.key});
+class DriverHistoryScreen extends StatefulWidget {
+  final String? conductorId;
+  final SolicitudService? solicitudService;
+
+  const DriverHistoryScreen({
+    super.key,
+    this.conductorId,
+    this.solicitudService,
+  });
+
+  @override
+  State<DriverHistoryScreen> createState() => _DriverHistoryScreenState();
+}
+
+class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
+  late final SolicitudService _service =
+      widget.solicitudService ?? SolicitudService();
+  List<Solicitud> _solicitudes = const [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSolicitudes();
+  }
+
+  Future<void> _loadSolicitudes() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      _solicitudes = await _service.listar(conductorId: widget.conductorId);
+    } on ApiException catch (error) {
+      _error = error.message;
+    } catch (_) {
+      _error = 'No se pudo cargar el historial.';
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,25 +77,25 @@ class DriverHistoryScreen extends StatelessWidget {
                 children: [
                   _buildStatCard(
                     icon: Icons.attach_money,
-                    value: '\$1,250',
-                    label: 'Gastos Totales',
+                    value: '—',
+                    label: 'Ganancias',
                     color: Colors.green,
                   ),
                   _buildStatCard(
                     icon: Icons.local_taxi,
-                    value: '45',
+                    value: _completedCount.toString(),
                     label: 'Viajes Realizados',
                     color: Colors.blue,
                   ),
                   _buildStatCard(
                     icon: Icons.route,
-                    value: '1,250 km',
+                    value: '—',
                     label: 'Distancia Recorrida',
                     color: Colors.orange,
                   ),
                   _buildStatCard(
                     icon: Icons.star,
-                    value: '4.8',
+                    value: '—',
                     label: 'Calificación Promedio',
                     color: Colors.amber,
                   ),
@@ -72,38 +115,71 @@ class DriverHistoryScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Recent Rides List
-              _buildRideCard(
-                date: 'Hoy, 14:30',
-                pickup: 'Centro Histórico',
-                destination: 'Zona Rosa',
-                amount: '\$85',
-                driver: 'Carlos R.',
-                driverRating: 4.9,
-              ),
-              const SizedBox(height: 12),
-              _buildRideCard(
-                date: 'Ayer, 09:15',
-                pickup: 'Polanco',
-                destination: 'Aeropuerto',
-                amount: '\$150',
-                driver: 'María G.',
-                driverRating: 4.8,
-              ),
-              const SizedBox(height: 12),
-              _buildRideCard(
-                date: '12 Ene, 18:45',
-                pickup: 'Condesa',
-                destination: 'Roma Norte',
-                amount: '\$65',
-                driver: 'Luis M.',
-                driverRating: 4.7,
-              ),
+              if (_isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_error != null)
+                _buildStatusMessage(_error!, onRetry: _loadSolicitudes)
+              else if (_solicitudes.isEmpty)
+                _buildStatusMessage('Aún no tienes servicios registrados.')
+              else
+                ..._solicitudes.map(
+                  (solicitud) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildRideCard(
+                      date: _formatDate(
+                        solicitud.fechaSolicitud ?? solicitud.createdAt,
+                      ),
+                      pickup: solicitud.origen ?? 'Origen no disponible',
+                      destination: solicitud.destino ?? 'Destino no disponible',
+                      amount: solicitud.precio == null
+                          ? '—'
+                          : '\$${solicitud.precio}',
+                      driver: solicitud.clienteId ?? 'Cliente no disponible',
+                      driverRating: 0,
+                      status: solicitud.estado,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  int get _completedCount => _solicitudes
+      .where((item) => (item.estado ?? '').toLowerCase().contains('complet'))
+      .length;
+
+  Widget _buildStatusMessage(String message, {VoidCallback? onRetry}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Column(
+          children: [
+            Text(message, textAlign: TextAlign.center),
+            if (onRetry != null) ...[
+              const SizedBox(height: 12),
+              TextButton(onPressed: onRetry, child: const Text('Reintentar')),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Fecha no disponible';
+    final local = date.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/${local.year} '
+        '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _buildStatCard({
@@ -165,11 +241,7 @@ class DriverHistoryScreen extends StatelessWidget {
               color: color.withOpacity(0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 28,
-            ),
+            child: Icon(icon, color: color, size: 28),
           ),
         ],
       ),
@@ -183,6 +255,7 @@ class DriverHistoryScreen extends StatelessWidget {
     required String amount,
     required String driver,
     required double driverRating,
+    String? status,
   }) {
     return Container(
       width: double.infinity,
@@ -235,11 +308,7 @@ class DriverHistoryScreen extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                   ),
-                  Container(
-                    width: 2,
-                    height: 30,
-                    color: Colors.grey[300],
-                  ),
+                  Container(width: 2, height: 30, color: Colors.grey[300]),
                   Container(
                     width: 12,
                     height: 12,
@@ -257,18 +326,12 @@ class DriverHistoryScreen extends StatelessWidget {
                   children: [
                     Text(
                       pickup,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       destination,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                   ],
                 ),
@@ -276,11 +339,7 @@ class DriverHistoryScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Container(
-            height: 1,
-            width: double.infinity,
-            color: Colors.grey[200],
-          ),
+          Container(height: 1, width: double.infinity, color: Colors.grey[200]),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -294,10 +353,7 @@ class DriverHistoryScreen extends StatelessWidget {
                       color: const Color(0xFFF5F7FA),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.black,
-                    ),
+                    child: const Icon(Icons.person, color: Colors.black),
                   ),
                   const SizedBox(width: 12),
                   Column(
@@ -313,11 +369,7 @@ class DriverHistoryScreen extends StatelessWidget {
                       ),
                       Row(
                         children: [
-                          const Icon(
-                            Icons.star,
-                            color: Colors.amber,
-                            size: 16,
-                          ),
+                          const Icon(Icons.star, color: Colors.amber, size: 16),
                           const SizedBox(width: 4),
                           Text(
                             driverRating.toString(),
@@ -333,14 +385,17 @@ class DriverHistoryScreen extends StatelessWidget {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8F9F0),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'Completado',
-                  style: TextStyle(
+                child: Text(
+                  status ?? 'Sin estado',
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF2E7D32),
