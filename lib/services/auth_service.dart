@@ -1,10 +1,11 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../config/api_config.dart';
 
 class AuthService {
-
   // =========================
   // INICIAR SESIÓN
   // =========================
@@ -13,7 +14,6 @@ class AuthService {
     String correo,
     String password,
   ) async {
-
     final response = await http.post(
       Uri.parse(
         '${ApiConfig.baseUrl}/auth/mobile-login',
@@ -30,10 +30,8 @@ class AuthService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200 && data['success'] == true) {
-
       final resultado = data['data'];
 
-      // Guardar sesión
       await guardarSesion(resultado);
 
       return resultado;
@@ -43,6 +41,10 @@ class AuthService {
       data['message'] ?? 'Error al iniciar sesión.',
     );
   }
+
+  // =========================
+  // REGISTRO
+  // =========================
 
   static Future<Map<String, dynamic>> register({
     required String nombre,
@@ -54,7 +56,6 @@ class AuthService {
     required String telefono,
     required String direccion,
   }) async {
-
     final response = await http.post(
       Uri.parse(
         '${ApiConfig.baseUrl}/clientes',
@@ -85,6 +86,10 @@ class AuthService {
     );
   }
 
+  // =========================
+  // RECUPERAR CONTRASEÑA
+  // =========================
+
   static Future<void> forgotPassword(String correo) async {
     final response = await http.post(
       Uri.parse(
@@ -110,6 +115,10 @@ class AuthService {
     );
   }
 
+  // =========================
+  // RESTABLECER CONTRASEÑA
+  // =========================
+
   static Future<void> resetPassword({
     required String token,
     required String password,
@@ -129,17 +138,14 @@ class AuthService {
 
     final data = jsonDecode(response.body);
 
-    if (response.statusCode == 200 &&
-        data['success'] == true) {
+    if (response.statusCode == 200 && data['success'] == true) {
       return;
     }
 
     throw Exception(
-      data['message'] ??
-          'No se pudo restablecer la contraseña.',
+      data['message'] ?? 'No se pudo restablecer la contraseña.',
     );
   }
-
 
   // =========================
   // GUARDAR SESIÓN
@@ -148,63 +154,89 @@ class AuthService {
   static Future<void> guardarSesion(
     Map<String, dynamic> datos,
   ) async {
-
     final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setString(
-      'token',
-      datos['token'],
-    );
+    if (datos['token'] != null) {
+      await prefs.setString(
+        'token',
+        datos['token'].toString(),
+      );
+    }
 
-    await prefs.setString(
-      'usuario',
-      jsonEncode(datos['usuario']),
-    );
+    if (datos['usuario'] != null) {
+      await prefs.setString(
+        'usuario',
+        jsonEncode(datos['usuario']),
+      );
+    }
   }
-
 
   // =========================
   // OBTENER TOKEN
   // =========================
 
   static Future<String?> obtenerToken() async {
-
     final prefs = await SharedPreferences.getInstance();
 
     return prefs.getString('token');
   }
-
 
   // =========================
   // OBTENER USUARIO
   // =========================
 
   static Future<Map<String, dynamic>?> obtenerUsuario() async {
-
     final prefs = await SharedPreferences.getInstance();
 
     final usuario = prefs.getString('usuario');
+
+    if (usuario == null || usuario.isEmpty) {
+      return null;
+    }
+
+    final datos = jsonDecode(usuario);
+
+    if (datos is Map<String, dynamic>) {
+      return datos;
+    }
+
+    return null;
+  }
+
+  // =========================
+  // OBTENER ID DEL USUARIO
+  // =========================
+
+  static Future<String?> obtenerUsuarioId() async {
+    final usuario = await obtenerUsuario();
 
     if (usuario == null) {
       return null;
     }
 
-    return jsonDecode(usuario);
-  }
+    final id = usuario['_id'] ?? usuario['id'];
 
+    if (id == null) {
+      return null;
+    }
+
+    return id.toString();
+  }
 
   // =========================
   // COMPROBAR SESIÓN
   // =========================
 
   static Future<bool> tieneSesion() async {
-
     final prefs = await SharedPreferences.getInstance();
 
     final token = prefs.getString('token');
-    final usuario = prefs.getString('usuario'); 
+    final usuario = prefs.getString('usuario');
 
-    return token != null && token.isNotEmpty;
+    return token != null &&
+        token.isNotEmpty &&
+        usuario != null &&
+        usuario.isNotEmpty;
   }
 
   // =========================
@@ -212,7 +244,6 @@ class AuthService {
   // =========================
 
   static Future<void> logout() async {
-
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.remove('token');

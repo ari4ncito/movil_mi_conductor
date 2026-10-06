@@ -381,7 +381,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     required ValueChanged<String?> onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
 
       icon: const Icon(
         Icons.keyboard_arrow_down_rounded,
@@ -571,7 +571,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           Switch(
             value: value,
 
-            activeColor:
+            activeThumbColor:
                 AppColors
                     .accentOrange,
 

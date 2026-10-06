@@ -326,7 +326,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     _sectionLabel('SELECCIONAR VEHÍCULO', Icons.directions_car_filled_outlined),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<Vehicle>(
-                      value: _selectedVehicle,
+                      initialValue: _selectedVehicle,
                       style: const TextStyle(color: AppColors.textPrimary),
                       dropdownColor: AppColors.cardBackground,
                       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.petrol),

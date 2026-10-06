@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../widgets/custom_text_field.dart';
 
+import '../../services/auth_service.dart';
+
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -9,9 +11,43 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final _nameController = TextEditingController(text: 'Juan Pérez');
-  final _emailController = TextEditingController(text: 'juan.perez@email.com');
-  final _phoneController = TextEditingController(text: '+52 1 234 567 890');
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final usuario = await AuthService.obtenerUsuario();
+      if (mounted && usuario != null) {
+        setState(() {
+          _nameController.text = '${usuario['nombre'] ?? ''} ${usuario['apellido'] ?? ''}'.trim();
+          _emailController.text = usuario['correo']?.toString() ?? '';
+          _phoneController.text = usuario['telefono']?.toString() ?? '';
+          _isLoading = false;
+        });
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -42,10 +78,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: _isLoading 
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF8A00)))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Avatar
               Center(
