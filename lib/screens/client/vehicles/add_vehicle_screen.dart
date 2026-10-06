@@ -3,6 +3,8 @@ import 'package:file_picker/file_picker.dart';
 
 import '/models/vehicle.dart';
 import '/widgets/custom_text_field.dart';
+import '../../../../services/auth_service.dart';
+import '../../../../services/vehiculo_service.dart';
 
 // ─────────────────────────────────────────────
 // Paleta de la app
@@ -24,7 +26,8 @@ class AppColors {
 }
 
 class AddVehicleScreen extends StatefulWidget {
-  const AddVehicleScreen({super.key});
+  final dynamic vehicleToEdit;
+  const AddVehicleScreen({super.key, this.vehicleToEdit});
 
   @override
   State<AddVehicleScreen> createState() => _AddVehicleScreenState();
@@ -77,6 +80,30 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     'Seguro': false,
     'Verificación': false,
   };
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.vehicleToEdit != null) {
+      final v = widget.vehicleToEdit;
+      _brandController.text = v['marca'] ?? '';
+      _modelController.text = v['modelo'] ?? '';
+      _platesController.text = v['placa'] ?? '';
+      _colorController.text = v['color'] ?? '';
+      _yearController.text = v['anio']?.toString() ?? '';
+      _vinController.text = v['numeroChasis'] ?? '';
+      _insuranceCompanyController.text = v['companiaAseguradora'] ?? '';
+      _vehicleType = v['tipoVehiculo'];
+      _fuelType = v['tipoCombustible'];
+      _doors = v['numeroPuertas'] != null ? '${v['numeroPuertas']} puertas' : null;
+      _insuranceStatus = v['estadoSeguro'];
+      _hasGps = v['gpsRastreo'] ?? false;
+      _hasAirbags = v['airbags'] ?? false;
+      _hasAbs = v['frenosAbs'] ?? false;
+      _hasRearCamera = v['camaraTrasera'] ?? false;
+      _hasInteriorCamera = v['camaraInterior'] ?? false;
+    }
+  }
 
   // Archivos
   PlatformFile? _technicalReviewFile;
@@ -159,29 +186,64 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   // GUARDAR VEHÍCULO
   // ─────────────────────────────────────────────
 
-  void _submit() {
+  bool _isLoading = false;
+
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
-      final newVehicle = Vehicle(
-        id: DateTime.now()
-            .millisecondsSinceEpoch
-            .toString(),
+      setState(() {
+        _isLoading = true;
+      });
 
-        brand: _brandController.text.trim(),
+      try {
+        final usuarioId = await AuthService.obtenerUsuarioId();
+        if (usuarioId == null) throw Exception('No hay usuario activo');
 
-        plates: _platesController.text
-            .trim()
-            .toUpperCase(),
+        final vehiculoData = {
+          'cliente': usuarioId,
+          'marca': _brandController.text.trim(),
+          'modelo': _modelController.text.trim().isEmpty ? _brandController.text.trim() : _modelController.text.trim(),
+          'placa': _platesController.text.trim().toUpperCase(),
+          'numeroChasis': _vinController.text.trim().isEmpty ? '00000' : _vinController.text.trim(), // Placeholder si está vacío
+          'color': _colorController.text.trim(),
+          'anio': int.tryParse(_yearController.text.trim()) ?? DateTime.now().year,
+          'tipoVehiculo': _vehicleType ?? 'Automóvil',
+          'numeroPuertas': int.tryParse(_doors?.split(' ')[0] ?? '4') ?? 4,
+          'tipoCombustible': _fuelType ?? 'Gasolina',
+          'estadoSeguro': _insuranceStatus ?? 'Vigente',
+          'companiaAseguradora': _insuranceCompanyController.text.trim().isEmpty ? 'N/A' : _insuranceCompanyController.text.trim(),
+          'gpsRastreo': _hasGps,
+          'airbags': _hasAirbags,
+          'frenosAbs': _hasAbs,
+          'camaraTrasera': _hasRearCamera,
+          'camaraInterior': _hasInteriorCamera,
+          'estado': true,
+        };
 
-        color: _colorController.text.trim(),
+        if (widget.vehicleToEdit != null) {
+          await VehiculoService.update(widget.vehicleToEdit['_id'], vehiculoData);
+        } else {
+          await VehiculoService.crear(vehiculoData);
+        }
 
-        year: _yearController.text.trim(),
-
-        icon: Icons.directions_car_outlined,
-
-        iconColor: AppColors.slateGray,
-      );
-
-      Navigator.of(context).pop(newVehicle);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(widget.vehicleToEdit != null ? 'Vehículo actualizado exitosamente' : 'Vehículo registrado exitosamente')),
+          );
+          Navigator.of(context).pop(true);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
     }
   }
 
@@ -381,7 +443,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     required ValueChanged<String?> onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      initialValue: value,
+      value: value,
 
       icon: const Icon(
         Icons.keyboard_arrow_down_rounded,
@@ -571,7 +633,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           Switch(
             value: value,
 
-            activeThumbColor:
+            activeColor:
                 AppColors
                     .accentOrange,
 
@@ -860,10 +922,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
         elevation: 0,
 
-        title: const Text(
-          'Agregar Vehículo',
+        title: Text(
+          widget.vehicleToEdit != null ? 'Editar Vehículo' : 'Agregar Vehículo',
 
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 20,
             fontWeight:
                 FontWeight.bold,
@@ -1108,6 +1170,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             _vehicleType,
 
                         items: const [
+                          'Automóvil',
                           'Sedán',
                           'SUV',
                           'Camioneta',
@@ -1609,7 +1672,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     child:
                         ElevatedButton(
                       onPressed:
-                          _submit,
+                          _isLoading ? null : _submit,
 
                       style:
                           ElevatedButton
@@ -1644,11 +1707,20 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       ),
 
                       child:
-                          const Text(
-                        'Guardar Vehículo',
+                          _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  widget.vehicleToEdit != null ? 'Guardar Cambios' : 'Registrar Vehículo',
 
                         style:
-                            TextStyle(
+                            const TextStyle(
                           fontSize: 16,
 
                           fontWeight:

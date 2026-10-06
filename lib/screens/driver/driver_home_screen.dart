@@ -271,7 +271,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                             onChanged: _isUpdatingAvailability
                                 ? null
                                 : _cambiarDisponibilidad,
-                            activeThumbColor: const Color(0xFFFF8A00),
+                            activeColor: const Color(0xFFFF8A00),
                             inactiveThumbColor: Colors.grey[400],
                           ),
                         ],

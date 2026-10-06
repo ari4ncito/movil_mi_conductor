@@ -218,7 +218,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // TIPO DE DOCUMENTO
                 DropdownButtonFormField<String>(
-                  initialValue: _tipoDocumento,
+                  value: _tipoDocumento,
                   decoration: InputDecoration(
                     labelText: 'TIPO DE DOCUMENTO',
                     prefixIcon: const Icon(
