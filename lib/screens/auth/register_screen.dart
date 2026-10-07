@@ -15,6 +15,7 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   bool _aceptaTerminos = false;
+  bool _aceptaPoliticas = false;
 
   // Controllers
   final _nombreController = TextEditingController();
@@ -27,7 +28,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmarPasswordController = TextEditingController();
 
   // Tipo de documento
-  String _tipoDocumento = 'CC';
+  String? _tipoDocumento;
 
   @override
   void dispose() {
@@ -47,6 +48,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // Validar campos vacíos
     if (_nombreController.text.trim().isEmpty ||
         _apellidoController.text.trim().isEmpty ||
+        _tipoDocumento == null ||
         _documentoController.text.trim().isEmpty ||
         _correoController.text.trim().isEmpty ||
         _telefonoController.text.trim().isEmpty ||
@@ -75,11 +77,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     // Validar términos
-    if (!_aceptaTerminos) {
+    if (!_aceptaTerminos || !_aceptaPoliticas) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Debes aceptar los Términos y Condiciones.',
+            'Debes aceptar los Términos y Condiciones y la Política de Privacidad.',
           ),
         ),
       );
@@ -96,7 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await AuthService.register(
         nombre: _nombreController.text.trim(),
         apellido: _apellidoController.text.trim(),
-        tipoDocumento: _tipoDocumento,
+        tipoDocumento: _tipoDocumento!,
         documento: _documentoController.text.trim(),
         correo: _correoController.text.trim(),
         password: _passwordController.text,
@@ -151,7 +153,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
                 // Botón de regreso
                 GestureDetector(
@@ -159,28 +161,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Navigator.of(context).pop();
                   },
                   child: Container(
-                    width: 48,
-                    height: 48,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F7F8),
-                      borderRadius: BorderRadius.circular(16),
+                      color: const Color(0xFF12566B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
-                      Icons.arrow_back_ios,
-                      color: Colors.black,
+                      Icons.arrow_back_ios_new,
+                      color: Color(0xFF12566B),
                       size: 20,
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
                 const Text(
                   'Crea tu Cuenta',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: Color(0xFF12566B),
                   ),
                 ),
 
@@ -194,35 +196,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
 
                 // NOMBRE
                 CustomTextField(
-                  labelText: 'NOMBRE',
+                  labelText: 'Nombre',
                   hintText: 'Tu nombre',
                   prefixIcon: Icons.person_outline,
                   controller: _nombreController,
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // APELLIDO
                 CustomTextField(
-                  labelText: 'APELLIDO',
+                  labelText: 'Apellido',
                   hintText: 'Tu apellido',
                   prefixIcon: Icons.person_outline,
                   controller: _apellidoController,
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // TIPO DE DOCUMENTO
                 DropdownButtonFormField<String>(
-                  initialValue: _tipoDocumento,
+                  value: _tipoDocumento,
+                  isDense: true,
+                  hint: const Text(
+                    'Selecciona una opción',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black,
+                  ),
                   decoration: InputDecoration(
-                    labelText: 'TIPO DE DOCUMENTO',
+                    labelText: 'Tipo de documento',
                     prefixIcon: const Icon(
                       Icons.badge_outlined,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 12,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -231,21 +246,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   items: const [
                     DropdownMenuItem(
                       value: 'CC',
-                      child: Text(
-                        'Cédula de Ciudadanía',
-                      ),
+                      child: Text('Cédula de Ciudadanía'),
                     ),
                     DropdownMenuItem(
                       value: 'TI',
-                      child: Text(
-                        'Tarjeta de Identidad',
-                      ),
+                      child: Text('Tarjeta de Identidad'),
                     ),
                     DropdownMenuItem(
                       value: 'CE',
-                      child: Text(
-                        'Cédula de Extranjería',
-                      ),
+                      child: Text('Cédula de Extranjería'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'PA',
+                      child: Text('Pasaporte'),
                     ),
                   ],
                   onChanged: (value) {
@@ -257,65 +270,65 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // DOCUMENTO
                 CustomTextField(
-                  labelText: 'NÚMERO DE DOCUMENTO',
+                  labelText: 'Número de documento',
                   hintText: 'Tu número de documento',
                   prefixIcon: Icons.badge_outlined,
                   controller: _documentoController,
                   keyboardType: TextInputType.number,
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // CORREO
                 CustomTextField(
-                  labelText: 'CORREO ELECTRÓNICO',
+                  labelText: 'Correo electrónico',
                   hintText: 'ejemplo@dominio.com',
                   prefixIcon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
                   controller: _correoController,
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // TELÉFONO
                 CustomTextField(
-                  labelText: 'NÚMERO DE TELÉFONO',
+                  labelText: 'Número de teléfono',
                   hintText: '3001234567',
                   prefixIcon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
                   controller: _telefonoController,
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // DIRECCIÓN
                 CustomTextField(
-                  labelText: 'DIRECCIÓN',
+                  labelText: 'Dirección',
                   hintText: 'Tu dirección',
                   prefixIcon: Icons.location_on_outlined,
                   controller: _direccionController,
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // CONTRASEÑA
                 CustomTextField(
-                  labelText: 'CONTRASEÑA',
+                  labelText: 'Contraseña',
                   prefixIcon: Icons.lock_outlined,
                   suffixIcon: Icons.visibility_off_outlined,
                   obscureText: true,
                   controller: _passwordController,
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // CONFIRMAR CONTRASEÑA
                 CustomTextField(
-                  labelText: 'CONFIRMAR CONTRASEÑA',
+                  labelText: 'Confirmar contraseña',
                   prefixIcon: Icons.lock_outlined,
                   suffixIcon: Icons.visibility_off_outlined,
                   obscureText: true,
@@ -326,25 +339,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // TÉRMINOS Y CONDICIONES
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Checkbox(
                       value: _aceptaTerminos,
+                      activeColor: const Color(0xFF12566B),
                       onChanged: (value) {
                         setState(() {
                           _aceptaTerminos = value ?? false;
                         });
                       },
                     ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Text(
-                          'Acepto los Términos y Condiciones y la Política de Privacidad',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
+                    const Expanded(
+                      child: Text(
+                        'Acepto los Términos y Condiciones',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                // POLÍTICA DE PRIVACIDAD
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Checkbox(
+                      value: _aceptaPoliticas,
+                      activeColor: const Color(0xFF12566B),
+                      onChanged: (value) {
+                        setState(() {
+                          _aceptaPoliticas = value ?? false;
+                        });
+                      },
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'Acepto la Política de Privacidad',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black87,
                         ),
                       ),
                     ),
@@ -359,7 +395,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _register,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF8A00),
+                      backgroundColor: const Color(0xFF12566B),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         vertical: 16,
@@ -414,7 +450,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           TextSpan(
                             text: 'Inicia Sesión',
                             style: TextStyle(
-                              color: Color(0xFFFF8A00),
+                              color: Color(0xFF12566B),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
