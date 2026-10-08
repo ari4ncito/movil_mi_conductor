@@ -28,7 +28,7 @@ class FavoriteAddressesScreen extends StatelessWidget {
         backgroundColor: AppColors.white,
         elevation: 0,
         title: const Text(
-          'Direcciones Favoritas',
+          'Direcciónes Favoritas',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,

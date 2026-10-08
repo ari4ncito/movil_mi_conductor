@@ -170,7 +170,7 @@ class ClientProfileScreen extends StatelessWidget {
                     ),
                     _buildProfileOption(
                       icon: Icons.location_on,
-                      label: 'Direcciones Favoritas',
+                      label: 'Direcciónes Favoritas',
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../models/solicitud.dart';
+import '../../services/http_client.dart';
+import '../../services/solicitud_service.dart';
 
 // ============================================================
 // PALETA DE COLORES — Azul Petróleo (misma paleta del proyecto)
@@ -17,8 +20,44 @@ class AppColors {
   static const Color accent = Color(0xFFE8862E);
 }
 
-class ClientHistoryScreen extends StatelessWidget {
-  const ClientHistoryScreen({super.key});
+class ClientHistoryScreen extends StatefulWidget {
+  final String? clienteId;
+  final SolicitudService? solicitudService;
+
+  const ClientHistoryScreen({super.key, this.clienteId, this.solicitudService});
+
+  @override
+  State<ClientHistoryScreen> createState() => _ClientHistoryScreenState();
+}
+
+class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
+  late final SolicitudService _service =
+      widget.solicitudService ?? SolicitudService();
+  List<Solicitud> _solicitudes = const [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSolicitudes();
+  }
+
+  Future<void> _loadSolicitudes() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      _solicitudes = await _service.listar(clienteId: widget.clienteId);
+    } on ApiException catch (error) {
+      _error = error.message;
+    } catch (_) {
+      _error = 'No se pudo cargar el historial.';
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,10 +85,7 @@ class ClientHistoryScreen extends StatelessWidget {
 
               Text(
                 'Viajes realizados y pedidos anteriores',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
 
               const SizedBox(height: 24),
@@ -60,7 +96,7 @@ class ClientHistoryScreen extends StatelessWidget {
                   Expanded(
                     child: _buildStatCard(
                       icon: Icons.check_circle_outline,
-                      value: '84',
+                      value: _completedCount.toString(),
                       label: 'Servicios Completados',
                       color: AppColors.petrol,
                     ),
@@ -71,7 +107,7 @@ class ClientHistoryScreen extends StatelessWidget {
                   Expanded(
                     child: _buildStatCard(
                       icon: Icons.directions_car,
-                      value: '84',
+                      value: _solicitudes.length.toString(),
                       label: 'Viajes',
                       color: AppColors.petrolLight,
                     ),
@@ -86,7 +122,7 @@ class ClientHistoryScreen extends StatelessWidget {
                   Expanded(
                     child: _buildStatCard(
                       icon: Icons.route,
-                      value: '156.4 km',
+                      value: '—',
                       label: 'Distancia Recorrida',
                       color: AppColors.slate,
                     ),
@@ -97,7 +133,7 @@ class ClientHistoryScreen extends StatelessWidget {
                   Expanded(
                     child: _buildStatCard(
                       icon: Icons.star,
-                      value: '4.95',
+                      value: '—',
                       label: 'Calificación Promedio',
                       color: AppColors.accent,
                     ),
@@ -134,36 +170,33 @@ class ClientHistoryScreen extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // Tarjeta de viaje 1
-              _buildTripCard(
-                date: 'Hoy, 14:30',
-                driver: 'Alejandro S.',
-                from: 'Torre Virreyes, Pedregal 24',
-                to: 'Aeropuerto Internacional',
-                rating: 5,
-              ),
-
-              const SizedBox(height: 12),
-
-              // Tarjeta de viaje 2
-              _buildTripCard(
-                date: 'Hoy, 12:15',
-                driver: 'Marcio Hernandez',
-                from: 'Centro Histórico',
-                to: 'Zona Rosa',
-                rating: 5,
-              ),
-
-              const SizedBox(height: 12),
-
-              // Tarjeta de viaje 3
-              _buildTripCard(
-                date: 'Ayer, 19:45',
-                driver: 'Carla M.',
-                from: 'Condesa',
-                to: 'Polanco',
-                rating: 4,
-              ),
+              if (_isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_error != null)
+                _buildStatusMessage(_error!, onRetry: _loadSolicitudes)
+              else if (_solicitudes.isEmpty)
+                _buildStatusMessage('Aún no tienes solicitudes registradas.')
+              else
+                ..._solicitudes.map(
+                  (solicitud) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildTripCard(
+                      date: _formatDate(
+                        solicitud.fechaSolicitud ?? solicitud.createdAt,
+                      ),
+                      driver: solicitud.conductorId ?? 'Sin conductor asignado',
+                      from: solicitud.origen ?? 'Origen no disponible',
+                      to: solicitud.destino ?? 'Destino no disponible',
+                      rating: 0,
+                      status: solicitud.estado,
+                    ),
+                  ),
+                ),
 
               const SizedBox(height: 24),
             ],
@@ -171,6 +204,36 @@ class ClientHistoryScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  int get _completedCount => _solicitudes
+      .where((item) => (item.estado ?? '').toLowerCase().contains('complet'))
+      .length;
+
+  Widget _buildStatusMessage(String message, {VoidCallback? onRetry}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Column(
+          children: [
+            Text(message, textAlign: TextAlign.center),
+            if (onRetry != null) ...[
+              const SizedBox(height: 12),
+              TextButton(onPressed: onRetry, child: const Text('Reintentar')),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Fecha no disponible';
+    final local = date.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/${local.year} '
+        '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _buildStatCard({
@@ -236,16 +299,9 @@ class ClientHistoryScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: color.withOpacity(0.15),
               shape: BoxShape.circle,
-              border: Border.all(
-                color: color.withOpacity(0.25),
-                width: 1,
-              ),
+              border: Border.all(color: color.withOpacity(0.25), width: 1),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
+            child: Icon(icon, color: color, size: 24),
           ),
         ],
       ),
@@ -258,6 +314,7 @@ class ClientHistoryScreen extends StatelessWidget {
     required String from,
     required String to,
     required int rating,
+    String? status,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -290,6 +347,15 @@ class ClientHistoryScreen extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (status != null && status.trim().isNotEmpty)
+                Text(
+                  status,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
             ],
           ),
 
@@ -304,10 +370,7 @@ class ClientHistoryScreen extends StatelessWidget {
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.petrolLight,
-                      AppColors.petrolDark,
-                    ],
+                    colors: [AppColors.petrolLight, AppColors.petrolDark],
                   ),
                   shape: BoxShape.circle,
                   boxShadow: [
@@ -366,11 +429,7 @@ class ClientHistoryScreen extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          Container(
-            width: double.infinity,
-            height: 1,
-            color: AppColors.border,
-          ),
+          Container(width: double.infinity, height: 1, color: AppColors.border),
 
           const SizedBox(height: 16),
 
@@ -389,11 +448,7 @@ class ClientHistoryScreen extends StatelessWidget {
                     ),
                   ),
 
-                  Container(
-                    width: 2,
-                    height: 24,
-                    color: AppColors.border,
-                  ),
+                  Container(width: 2, height: 24, color: AppColors.border),
 
                   Container(
                     width: 10,

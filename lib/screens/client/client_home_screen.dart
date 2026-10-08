@@ -1,28 +1,58 @@
 import 'package:flutter/material.dart';
 import '../client/services/searching_driver_screen.dart';
 import '../../models/vehicle.dart';
+import '../../models/solicitud.dart';
+import '../../services/http_client.dart';
+import '../../services/solicitud_service.dart';
 
 // ============================================================
 // PALETA DE COLORES — Azul Petróleo · Gris · Naranja Tenue
 // ============================================================
 class AppColors {
-  static const Color petrol = Color(0xFF0F3D44);        // Azul petróleo (principal)
-  static const Color petrolDark = Color(0xFF0A2A30);     // Azul petróleo oscuro
-  static const Color petrolLight = Color(0xFF1B5A63);    // Azul petróleo claro
-  static const Color petrolPale = Color(0xFFDCE9EA);     // Azul petróleo muy tenue (badges/fondos)
-  static const Color slate = Color(0xFF334A52);          // Azul grisáceo
-  static const Color background = Color(0xFFF2F5F6);     // Fondo general
+  static const Color petrol = Color(0xFF0F3D44); // Azul petróleo (principal)
+  static const Color petrolDark = Color(0xFF0A2A30); // Azul petróleo oscuro
+  static const Color petrolLight = Color(0xFF1B5A63); // Azul petróleo claro
+  static const Color petrolPale = Color(
+    0xFFDCE9EA,
+  ); // Azul petróleo muy tenue (badges/fondos)
+  static const Color slate = Color(0xFF334A52); // Azul grisáceo
+  static const Color background = Color(0xFFF2F5F6); // Fondo general
   static const Color cardBackground = Colors.white;
-  static const Color border = Color(0xFFDDE4E6);         // Bordes suaves
-  static const Color textPrimary = Color(0xFF1C2B2F);    // Texto principal
-  static const Color textSecondary = Color(0xFF6B7C80);  // Texto secundario / labels
-  static const Color accent = Color(0xFFE8862E);         // Naranja
-  static const Color accentDark = Color(0xFFC96A1B);     // Naranja oscuro (gradiente)
-  static const Color accentSoft = Color(0xFFFBEAD8);     // Naranja muy tenue (badges/fondos)
+  static const Color border = Color(0xFFDDE4E6); // Bordes suaves
+  static const Color textPrimary = Color(0xFF1C2B2F); // Texto principal
+  static const Color textSecondary = Color(
+    0xFF6B7C80,
+  ); // Texto secundario / labels
+  static const Color accent = Color(0xFFE8862E); // Naranja
+  static const Color accentDark = Color(
+    0xFFC96A1B,
+  ); // Naranja oscuro (gradiente)
+  static const Color accentSoft = Color(
+    0xFFFBEAD8,
+  ); // Naranja muy tenue (badges/fondos)
 }
 
 class ClientHomeScreen extends StatefulWidget {
-  const ClientHomeScreen({super.key});
+  final String? clienteId;
+  final String? codigo;
+  final String? correoCliente;
+  final String? tipoServicio;
+  final String? descripcionSolicitud;
+  final DateTime? fechaProgramada;
+  final String? prioridad;
+  final SolicitudService? solicitudService;
+
+  const ClientHomeScreen({
+    super.key,
+    this.clienteId,
+    this.codigo,
+    this.correoCliente,
+    this.tipoServicio,
+    this.descripcionSolicitud,
+    this.fechaProgramada,
+    this.prioridad,
+    this.solicitudService,
+  });
 
   @override
   State<ClientHomeScreen> createState() => _ClientHomeScreenState();
@@ -31,7 +61,9 @@ class ClientHomeScreen extends StatefulWidget {
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   final _nameController = TextEditingController(text: 'Carlos Mendoza');
   final _phoneController = TextEditingController(text: '+34 000 000 000');
-  final _originController = TextEditingController(text: 'Av. Paseo de la Reforma 250');
+  final _originController = TextEditingController(
+    text: 'Av. Paseo de la Reforma 250',
+  );
   final _destinationController = TextEditingController();
 
   // Datos de prueba de vehículos
@@ -56,6 +88,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     ),
   ];
   Vehicle? _selectedVehicle;
+  late final SolicitudService _solicitudService =
+      widget.solicitudService ?? SolicitudService();
+  bool _isCreatingSolicitud = false;
 
   @override
   void dispose() {
@@ -64,6 +99,75 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     _originController.dispose();
     _destinationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _createSolicitud() async {
+    if (_nameController.text.trim().isEmpty ||
+        _phoneController.text.trim().isEmpty ||
+        _originController.text.trim().isEmpty ||
+        _destinationController.text.trim().isEmpty ||
+        _selectedVehicle == null) {
+      _showMessage('Por favor completa todos los campos');
+      return;
+    }
+
+    final clienteId = widget.clienteId?.trim();
+    if (clienteId == null || clienteId.isEmpty) {
+      _showMessage(
+        'No se puede solicitar el viaje: tu sesión no tiene un ID de cliente válido.',
+      );
+      return;
+    }
+
+    if ([
+      widget.codigo,
+      widget.correoCliente,
+      widget.tipoServicio,
+      widget.descripcionSolicitud,
+      widget.prioridad,
+    ].any((value) => value == null || value.trim().isEmpty) ||
+        widget.fechaProgramada == null) {
+      _showMessage(
+        'La solicitud requiere código, correo, tipo de servicio, descripción, '
+        'fecha programada y prioridad reales.',
+      );
+      return;
+    }
+
+    setState(() => _isCreatingSolicitud = true);
+    try {
+      final solicitud = await _solicitudService.crearSolicitud(
+        Solicitud(
+          cliente: clienteId,
+          codigo: widget.codigo,
+          correoCliente: widget.correoCliente,
+          tipoServicio: widget.tipoServicio,
+          descripcion: widget.descripcionSolicitud,
+          origen: _originController.text.trim(),
+          destino: _destinationController.text.trim(),
+          fechaProgramada: widget.fechaProgramada,
+          prioridad: widget.prioridad,
+        ),
+      );
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => SearchingDriverScreen(solicitud: solicitud),
+        ),
+      );
+    } on ApiException catch (error) {
+      if (mounted) _showMessage(error.message);
+    } catch (_) {
+      if (mounted) _showMessage('No se pudo crear la solicitud.');
+    } finally {
+      if (mounted) setState(() => _isCreatingSolicitud = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   // Estilo reutilizable para los inputs (mantiene la lógica intacta,
@@ -126,7 +230,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   Widget _sectionDivider() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Divider(height: 1, thickness: 1, color: AppColors.border.withOpacity(0.8)),
+      child: Divider(
+        height: 1,
+        thickness: 1,
+        color: AppColors.border.withOpacity(0.8),
+      ),
     );
   }
 
@@ -179,7 +287,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [AppColors.petrolDark, AppColors.petrol, AppColors.petrolLight],
+                    colors: [
+                      AppColors.petrolDark,
+                      AppColors.petrol,
+                      AppColors.petrolLight,
+                    ],
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -197,9 +309,15 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withOpacity(0.25)),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.25),
+                        ),
                       ),
-                      child: const Icon(Icons.local_taxi_rounded, color: AppColors.accent, size: 26),
+                      child: const Icon(
+                        Icons.local_taxi_rounded,
+                        color: AppColors.accent,
+                        size: 26,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     const Expanded(
@@ -227,7 +345,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(20),
@@ -246,7 +367,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                           const SizedBox(width: 6),
                           const Text(
                             'En línea',
-                            style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       ),
@@ -270,10 +395,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
               const SizedBox(height: 4),
               const Text(
                 'Completa los datos para solicitar tu viaje',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 20),
 
@@ -323,13 +445,19 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     _sectionDivider(),
 
                     // Selección de Vehículo
-                    _sectionLabel('SELECCIONAR VEHÍCULO', Icons.directions_car_filled_outlined),
+                    _sectionLabel(
+                      'SELECCIONAR VEHÍCULO',
+                      Icons.directions_car_filled_outlined,
+                    ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<Vehicle>(
                       initialValue: _selectedVehicle,
                       style: const TextStyle(color: AppColors.textPrimary),
                       dropdownColor: AppColors.cardBackground,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.petrol),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: AppColors.petrol,
+                      ),
                       decoration: _inputDecoration(
                         label: 'Vehículo',
                         icon: Icons.directions_car_outlined,
@@ -344,7 +472,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                               Text(vehicle.brand),
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.petrolPale,
                                   borderRadius: BorderRadius.circular(6),
@@ -376,7 +507,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     _sectionDivider(),
 
                     // Origen y Destino
-                    _sectionLabel('DETALLES DEL VIAJE', Icons.alt_route_outlined),
+                    _sectionLabel(
+                      'DETALLES DEL VIAJE',
+                      Icons.alt_route_outlined,
+                    ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _originController,
@@ -419,24 +553,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                           ],
                         ),
                         child: ElevatedButton(
-                          onPressed: () {
-                            if (_nameController.text.trim().isEmpty ||
-                                _phoneController.text.trim().isEmpty ||
-                                _originController.text.trim().isEmpty ||
-                                _destinationController.text.trim().isEmpty ||
-                                _selectedVehicle == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Por favor completa todos los campos')),
-                              );
-                              return;
-                            }
-
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const SearchingDriverScreen(),
-                              ),
-                            );
-                          },
+                          onPressed: _isCreatingSolicitud
+                              ? null
+                              : _createSolicitud,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
@@ -447,21 +566,34 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.send_rounded, size: 20, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text(
-                                'Solicitar Viaje',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.3,
+                          child: _isCreatingSolicitud
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.send_rounded,
+                                      size: 20,
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Solicitar Viaje',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
-                          ),
                         ),
                       ),
                     ),
