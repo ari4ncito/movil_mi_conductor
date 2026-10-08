@@ -4,6 +4,10 @@ import '../../models/vehicle.dart';
 import '../../models/solicitud.dart';
 import '../../services/http_client.dart';
 import '../../services/solicitud_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/cliente_service.dart';
+import '../../services/vehiculo_service.dart';
+import 'vehicles/add_vehicle_screen.dart';
 
 // ============================================================
 // PALETA DE COLORES — Azul Petróleo · Gris · Naranja Tenue
@@ -59,38 +63,132 @@ class ClientHomeScreen extends StatefulWidget {
 }
 
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
-  final _nameController = TextEditingController(text: 'Carlos Mendoza');
-  final _phoneController = TextEditingController(text: '+34 000 000 000');
-  final _originController = TextEditingController(
-    text: 'Av. Paseo de la Reforma 250',
-  );
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _originController = TextEditingController();
   final _destinationController = TextEditingController();
 
-  // Datos de prueba de vehículos
-  final List<Vehicle> _vehicles = [
-    Vehicle(
-      id: '1',
-      brand: 'Toyota Corolla',
-      plates: 'ABC 123',
-      color: 'Rojo',
-      year: '2022',
-      icon: Icons.directions_car_outlined,
-      iconColor: AppColors.slate,
-    ),
-    Vehicle(
-      id: '2',
-      brand: 'Honda Civic',
-      plates: 'DEF 456',
-      color: 'Azul',
-      year: '2023',
-      icon: Icons.directions_car_outlined,
-      iconColor: AppColors.slate,
-    ),
-  ];
+  List<Vehicle> _vehicles = [];
   Vehicle? _selectedVehicle;
+
+  bool _isLoading = true;
+  bool _isCreatingSolicitud = false;
+  String? _errorMessage;
+
+  String? _clienteId;
+  String? _correoCliente;
+
   late final SolicitudService _solicitudService =
       widget.solicitudService ?? SolicitudService();
-  bool _isCreatingSolicitud = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos({String? selectVehicleId}) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // 1. Obtener datos del usuario autenticado guardados en sesión
+      final usuario = await AuthService.obtenerUsuario();
+      if (usuario != null) {
+        final nombreUsuario =
+            '${usuario['nombre'] ?? ''} ${usuario['apellido'] ?? ''}'.trim();
+        if (nombreUsuario.isNotEmpty) {
+          _nameController.text = nombreUsuario;
+        }
+        if (usuario['correo'] != null) {
+          _correoCliente = usuario['correo'].toString();
+        }
+        if (usuario['telefono'] != null &&
+            usuario['telefono'].toString().isNotEmpty) {
+          _phoneController.text = usuario['telefono'].toString();
+        }
+      }
+
+      // 2. Obtener datos completos del cliente autenticado desde la API
+      final cliente = await ClienteService.obtenerClienteActual();
+      if (cliente != null) {
+        _clienteId = cliente['_id']?.toString();
+        final u = cliente['usuario'];
+        if (u is Map) {
+          final nombreCompleto =
+              '${u['nombre'] ?? ''} ${u['apellido'] ?? ''}'.trim();
+          if (nombreCompleto.isNotEmpty) {
+            _nameController.text = nombreCompleto;
+          }
+          if (u['telefono'] != null && u['telefono'].toString().isNotEmpty) {
+            _phoneController.text = u['telefono'].toString();
+          }
+          if (u['correo'] != null) {
+            _correoCliente = u['correo'].toString();
+          }
+        }
+      } else if (widget.clienteId != null && widget.clienteId!.isNotEmpty) {
+        _clienteId = widget.clienteId;
+      }
+
+      // 3. Obtener ÚNICAMENTE los vehículos asociados al cliente autenticado
+      if (_clienteId != null && _clienteId!.isNotEmpty) {
+        final vehiculosRaw =
+            await VehiculoService.obtenerPorCliente(_clienteId!);
+        _vehicles = vehiculosRaw
+            .whereType<Map>()
+            .map((item) => Vehicle.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+
+        if (_vehicles.isNotEmpty) {
+          if (selectVehicleId != null) {
+            _selectedVehicle = _vehicles.firstWhere(
+              (v) => v.id == selectVehicleId,
+              orElse: () => _vehicles.first,
+            );
+          } else if (_selectedVehicle != null) {
+            final match = _vehicles.where((v) => v.id == _selectedVehicle!.id);
+            _selectedVehicle =
+                match.isNotEmpty ? match.first : _vehicles.first;
+          } else {
+            _selectedVehicle = _vehicles.first;
+          }
+        } else {
+          _selectedVehicle = null;
+        }
+      } else {
+        _vehicles = [];
+        _selectedVehicle = null;
+      }
+    } catch (e) {
+      _errorMessage =
+          'No se pudieron cargar los vehículos. Por favor intenta de nuevo.';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _registrarVehiculo() async {
+    final resultado = await Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const AddVehicleScreen()),
+    );
+
+    if (resultado != null && resultado != false && mounted) {
+      String? nuevoId;
+      if (resultado is Map && resultado['_id'] != null) {
+        nuevoId = resultado['_id'].toString();
+      } else if (resultado is Vehicle) {
+        nuevoId = resultado.id;
+      }
+      await _cargarDatos(selectVehicleId: nuevoId);
+    }
+  }
 
   @override
   void dispose() {
@@ -102,53 +200,76 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   }
 
   Future<void> _createSolicitud() async {
-    if (_nameController.text.trim().isEmpty ||
-        _phoneController.text.trim().isEmpty ||
-        _originController.text.trim().isEmpty ||
-        _destinationController.text.trim().isEmpty ||
-        _selectedVehicle == null) {
-      _showMessage('Por favor completa todos los campos');
+    final name = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
+    final origin = _originController.text.trim();
+    final destination = _destinationController.text.trim();
+
+    if (name.isEmpty) {
+      _showMessage('Por favor ingresa tu nombre completo');
       return;
     }
 
-    final clienteId = widget.clienteId?.trim();
-    if (clienteId == null || clienteId.isEmpty) {
+    if (phone.isEmpty) {
+      _showMessage('Por favor ingresa tu número telefónico');
+      return;
+    }
+
+    if (_vehicles.isEmpty) {
       _showMessage(
-        'No se puede solicitar el viaje: tu sesión no tiene un ID de cliente válido.',
+        'No tienes vehículos registrados. Por favor registra uno antes de continuar.',
       );
       return;
     }
 
-    if ([
-      widget.codigo,
-      widget.correoCliente,
-      widget.tipoServicio,
-      widget.descripcionSolicitud,
-      widget.prioridad,
-    ].any((value) => value == null || value.trim().isEmpty) ||
-        widget.fechaProgramada == null) {
+    if (_selectedVehicle == null) {
+      _showMessage('Por favor selecciona un vehículo');
+      return;
+    }
+
+    if (origin.isEmpty) {
+      _showMessage('Por favor ingresa el lugar de origen');
+      return;
+    }
+
+    if (destination.isEmpty) {
+      _showMessage('Por favor ingresa el lugar de destino');
+      return;
+    }
+
+    final clienteId = _clienteId ?? widget.clienteId?.trim();
+    if (clienteId == null || clienteId.isEmpty) {
       _showMessage(
-        'La solicitud requiere código, correo, tipo de servicio, descripción, '
-        'fecha programada y prioridad reales.',
+        'No se puede solicitar el viaje: no se encontró la sesión de cliente válida.',
       );
       return;
     }
 
     setState(() => _isCreatingSolicitud = true);
+
     try {
+      final now = DateTime.now();
+      final codigoGenerado =
+          'SOL-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${now.millisecondsSinceEpoch.toString().substring(7)}';
+
       final solicitud = await _solicitudService.crearSolicitud(
         Solicitud(
           cliente: clienteId,
-          codigo: widget.codigo,
-          correoCliente: widget.correoCliente,
-          tipoServicio: widget.tipoServicio,
-          descripcion: widget.descripcionSolicitud,
-          origen: _originController.text.trim(),
-          destino: _destinationController.text.trim(),
-          fechaProgramada: widget.fechaProgramada,
-          prioridad: widget.prioridad,
+          codigo: widget.codigo ?? codigoGenerado,
+          correoCliente:
+              _correoCliente ?? widget.correoCliente ?? 'cliente@miconductor.com',
+          vehiculo: _selectedVehicle!.id,
+          tipoServicio: widget.tipoServicio ?? 'Transporte Ejecutivo',
+          descripcion:
+              widget.descripcionSolicitud ??
+              'Solicitud de viaje: $origin hacia $destination',
+          origen: origin,
+          destino: destination,
+          fechaProgramada: widget.fechaProgramada ?? now,
+          prioridad: widget.prioridad ?? 'MEDIA',
         ),
       );
+
       if (!mounted) return;
       Navigator.of(context).push(
         MaterialPageRoute(
@@ -157,8 +278,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       );
     } on ApiException catch (error) {
       if (mounted) _showMessage(error.message);
-    } catch (_) {
-      if (mounted) _showMessage('No se pudo crear la solicitud.');
+    } catch (e) {
+      if (mounted) {
+        _showMessage('No se pudo crear la solicitud. Intenta nuevamente.');
+      }
     } finally {
       if (mounted) setState(() => _isCreatingSolicitud = false);
     }
@@ -270,9 +393,33 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.petrolDark),
+          tooltip: 'Regresar',
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          },
+        ),
+        title: const Text(
+          'Solicitar Servicio',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.petrolDark,
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: SafeArea(
+        top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -399,6 +546,47 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
               ),
               const SizedBox(height: 20),
 
+              // Mensaje de error si la carga falla
+              if (_errorMessage != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFDE8E8),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFF8B4B4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Color(0xFFC81E1E),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(
+                            color: Color(0xFFC81E1E),
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _cargarDatos,
+                        child: const Text(
+                          'Reintentar',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFC81E1E),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // Formulario
               Container(
                 width: double.infinity,
@@ -450,59 +638,185 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       Icons.directions_car_filled_outlined,
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<Vehicle>(
-                      value: _selectedVehicle,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      dropdownColor: AppColors.cardBackground,
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.petrol,
-                      ),
-                      decoration: _inputDecoration(
-                        label: 'Vehículo',
-                        icon: Icons.directions_car_outlined,
-                        iconColor: AppColors.petrol,
-                      ),
-                      items: _vehicles.map((vehicle) {
-                        return DropdownMenuItem<Vehicle>(
-                          value: vehicle,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(vehicle.brand),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
+
+                    if (_isLoading)
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.petrol,
+                            strokeWidth: 2.5,
+                          ),
+                        ),
+                      )
+                    else if (_vehicles.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 20,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: AppColors.petrolPale,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(
+                                Icons.directions_car_outlined,
+                                color: AppColors.petrol,
+                                size: 26,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No tienes vehículos registrados',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Registra tu vehículo para solicitar el viaje.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _registrarVehiculo,
+                                icon: const Icon(
+                                  Icons.add_rounded,
+                                  size: 20,
+                                  color: AppColors.petrol,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.petrolPale,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  vehicle.plates,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
+                                label: const Text(
+                                  'Registrar vehículo',
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
                                     color: AppColors.petrol,
                                   ),
                                 ),
+                                style: OutlinedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  side: const BorderSide(
+                                    color: AppColors.petrol,
+                                    width: 1.5,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
                               ),
-                            ],
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          DropdownButtonFormField<Vehicle>(
+                            value: _selectedVehicle,
+                            style: const TextStyle(color: AppColors.textPrimary),
+                            dropdownColor: AppColors.cardBackground,
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: AppColors.petrol,
+                            ),
+                            decoration: _inputDecoration(
+                              label: 'Vehículo',
+                              icon: Icons.directions_car_outlined,
+                              iconColor: AppColors.petrol,
+                            ),
+                            items: _vehicles.map((vehicle) {
+                              final label = vehicle.model.isNotEmpty
+                                  ? '${vehicle.brand} ${vehicle.model}'
+                                  : vehicle.brand;
+                              return DropdownMenuItem<Vehicle>(
+                                value: vehicle,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      label,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.petrolPale,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        vehicle.plates,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.petrol,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedVehicle = value;
+                              });
+                            },
+                            hint: const Text(
+                              'Selecciona tu vehículo',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
                           ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedVehicle = value;
-                        });
-                      },
-                      hint: const Text(
-                        'Selecciona tu vehículo',
-                        style: TextStyle(color: AppColors.textSecondary),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: _registrarVehiculo,
+                              icon: const Icon(
+                                Icons.add_circle_outline,
+                                size: 16,
+                                color: AppColors.petrol,
+                              ),
+                              label: const Text(
+                                'Registrar otro vehículo',
+                                style: TextStyle(
+                                  color: AppColors.petrol,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
 
                     _sectionDivider(),
 
@@ -610,7 +924,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 children: [
                   _trustChip(Icons.shield_outlined, 'Pago\nSeguro'),
                   const SizedBox(width: 10),
-                  _trustChip(Icons.verified_outlined, 'Conductor\nVerificado'),
+                  _trustChip(
+                    Icons.verified_outlined,
+                    'Conductor\nVerificado',
+                  ),
                   const SizedBox(width: 10),
                   _trustChip(Icons.bolt_outlined, 'Llegada\nRápida'),
                 ],

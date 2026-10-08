@@ -19,8 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
-  
+  bool _rememberMe = false;
 
   Future<void> _login() async {
     final email = _emailController.text.trim();
@@ -130,47 +129,37 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 40),
                 // Logo y título
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF8A00),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.directions_car,
-                        color: Colors.white,
-                        size: 32,
-                      ),
+                Center(
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF12566B),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Mi Conductor',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFFF8A00),
+                    child: const Icon(
+                      Icons.directions_car,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Soluciones de movilidad premium',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
+                const SizedBox(height: 16),
+                const Center(
+                  child: Text(
+                    'Mi Conductor',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF12566B),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 40),
                 // Campos de texto
                 CustomTextField(
-                  labelText: 'CORREO ELECTRÓNICO',
+                  labelText: 'Correo electrónico',
                   hintText: 'ejemplo@dominio.com',
                   prefixIcon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
@@ -178,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 CustomTextField(
-                  labelText: 'CONTRASEÑA',
+                  labelText: 'Contraseña',
                   prefixIcon: Icons.lock_outlined,
                   suffixIcon: _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                   obscureText: _obscurePassword,
@@ -196,8 +185,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     Row(
                       children: [
                         Checkbox(
-                          value: false,
-                          onChanged: (value) {},
+                          value: _rememberMe,
+                          activeColor: const Color(0xFF12566B),
+                          onChanged: (value) {
+                            setState(() {
+                              _rememberMe = value ?? false;
+                            });
+                          },
                         ),
                         Text(
                           'Recordarme',
@@ -233,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF8A00),
+                      backgroundColor: const Color(0xFF12566B),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -303,7 +297,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextSpan(
                             text: 'Regístrate',
                             style: TextStyle(
-                              color: Color(0xFFFF8A00),
+                              color: Color(0xFF12566B),
                               fontWeight: FontWeight.bold,
                             ),
                           ),

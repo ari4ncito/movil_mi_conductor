@@ -79,7 +79,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
       body: SafeArea(
         child: _isLoading 
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF8A00)))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF12566B)))
           : SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               child: Column(
@@ -93,7 +93,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF8A00),
+                        color: const Color(0xFF12566B),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
@@ -116,7 +116,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF8A00),
+                          color: const Color(0xFF12566B),
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
                         ),
@@ -163,7 +163,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF8A00),
+                    backgroundColor: const Color(0xFF12566B),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
