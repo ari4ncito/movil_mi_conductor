@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
+import 'auth_service.dart';
 
 class ApiException implements Exception {
   final String message;
@@ -23,42 +24,58 @@ class ApiHttpClient {
   ApiHttpClient({http.Client? client, this.token})
     : _client = client ?? http.Client();
 
-  Map<String, String> get _headers => {
-    'Accept': 'application/json',
-    'Content-Type': 'application/json',
-    if (token != null && token!.trim().isNotEmpty)
-      'Authorization': 'Bearer ${token!.trim()}',
-  };
+  Future<Map<String, String>> _getHeaders() async {
+    final activeToken = token ?? await AuthService.obtenerToken();
+    return {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      if (activeToken != null && activeToken.trim().isNotEmpty)
+        'Authorization': 'Bearer ${activeToken.trim()}',
+    };
+  }
 
-  Future<dynamic> get(String path, {Map<String, String>? queryParameters}) =>
-      _send(() => _client.get(ApiConfig.uri(path, queryParameters), headers: _headers));
+  Future<dynamic> get(String path, {Map<String, String>? queryParameters}) async {
+    final headers = await _getHeaders();
+    return _send(() => _client.get(ApiConfig.uri(path, queryParameters), headers: headers));
+  }
 
-  Future<dynamic> post(String path, {Map<String, dynamic>? body}) => _send(
-    () => _client.post(
-      ApiConfig.uri(path),
-      headers: _headers,
-      body: jsonEncode(body ?? <String, dynamic>{}),
-    ),
-  );
+  Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
+    final headers = await _getHeaders();
+    return _send(
+      () => _client.post(
+        ApiConfig.uri(path),
+        headers: headers,
+        body: jsonEncode(body ?? <String, dynamic>{}),
+      ),
+    );
+  }
 
-  Future<dynamic> patch(String path, {Map<String, dynamic>? body}) => _send(
-    () => _client.patch(
-      ApiConfig.uri(path),
-      headers: _headers,
-      body: jsonEncode(body ?? <String, dynamic>{}),
-    ),
-  );
+  Future<dynamic> patch(String path, {Map<String, dynamic>? body}) async {
+    final headers = await _getHeaders();
+    return _send(
+      () => _client.patch(
+        ApiConfig.uri(path),
+        headers: headers,
+        body: jsonEncode(body ?? <String, dynamic>{}),
+      ),
+    );
+  }
 
-  Future<dynamic> put(String path, {Map<String, dynamic>? body}) => _send(
-    () => _client.put(
-      ApiConfig.uri(path),
-      headers: _headers,
-      body: jsonEncode(body ?? <String, dynamic>{}),
-    ),
-  );
+  Future<dynamic> put(String path, {Map<String, dynamic>? body}) async {
+    final headers = await _getHeaders();
+    return _send(
+      () => _client.put(
+        ApiConfig.uri(path),
+        headers: headers,
+        body: jsonEncode(body ?? <String, dynamic>{}),
+      ),
+    );
+  }
 
-  Future<dynamic> delete(String path) =>
-      _send(() => _client.delete(ApiConfig.uri(path), headers: _headers));
+  Future<dynamic> delete(String path) async {
+    final headers = await _getHeaders();
+    return _send(() => _client.delete(ApiConfig.uri(path), headers: headers));
+  }
 
   Future<dynamic> _send(Future<http.Response> Function() request) async {
     try {

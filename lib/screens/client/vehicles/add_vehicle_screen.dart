@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import '/models/vehicle.dart';
 import '/widgets/custom_text_field.dart';
 import '../../../../services/auth_service.dart';
+import '../../../../services/cliente_service.dart';
 import '../../../../services/vehiculo_service.dart';
 
 // ─────────────────────────────────────────────
@@ -195,11 +196,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       });
 
       try {
-        final usuarioId = await AuthService.obtenerUsuarioId();
-        if (usuarioId == null) throw Exception('No hay usuario activo');
+        final cliente = await ClienteService.obtenerClienteActual();
+        final clienteId = cliente?['_id'] ?? await AuthService.obtenerUsuarioId();
+        if (clienteId == null) throw Exception('No hay cliente activo');
 
         final vehiculoData = {
-          'cliente': usuarioId,
+          'cliente': clienteId,
           'marca': _brandController.text.trim(),
           'modelo': _modelController.text.trim().isEmpty ? _brandController.text.trim() : _modelController.text.trim(),
           'placa': _platesController.text.trim().toUpperCase(),
@@ -219,17 +221,18 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           'estado': true,
         };
 
+        dynamic resultVehicle;
         if (widget.vehicleToEdit != null) {
-          await VehiculoService.update(widget.vehicleToEdit['_id'], vehiculoData);
+          resultVehicle = await VehiculoService.update(widget.vehicleToEdit['_id'], vehiculoData);
         } else {
-          await VehiculoService.crear(vehiculoData);
+          resultVehicle = await VehiculoService.crear(vehiculoData);
         }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(widget.vehicleToEdit != null ? 'Vehículo actualizado exitosamente' : 'Vehículo registrado exitosamente')),
           );
-          Navigator.of(context).pop(true);
+          Navigator.of(context).pop(resultVehicle ?? true);
         }
       } catch (e) {
         if (mounted) {
