@@ -34,7 +34,7 @@ class GuestConfirmationScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(32),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 20,
                           offset: const Offset(0, 4),
                         ),
@@ -160,8 +160,8 @@ class GuestConfirmationScreen extends StatelessWidget {
         Container(
           width: 44,
           height: 44,
-          decoration: BoxDecoration(
-            color: const Color(0xFF81D4FA),
+          decoration: const BoxDecoration(
+            color: Color(0xFF81D4FA),
             shape: BoxShape.circle,
           ),
           child: Icon(

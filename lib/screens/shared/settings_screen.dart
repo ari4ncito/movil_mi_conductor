@@ -120,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
@@ -149,7 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: activeColor.withOpacity(0.1),
+              color: activeColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -172,8 +172,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Switch.adaptive(
             value: value,
             onChanged: onChanged,
-            activeColor: activeColor,
-            activeTrackColor: activeColor.withOpacity(0.2),
+            activeThumbColor: activeColor,
+            activeTrackColor: activeColor.withValues(alpha: 0.2),
           ),
         ],
       ),
@@ -187,8 +187,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Color iconColor = const Color(0xFF607D8B),
   }) {
     final bgColor = isDestructive 
-        ? Colors.red.withOpacity(0.1) 
-        : iconColor.withOpacity(0.1);
+        ? Colors.red.withValues(alpha: 0.1) 
+        : iconColor.withValues(alpha: 0.1);
         
     final finalIconColor = isDestructive 
         ? Colors.red 

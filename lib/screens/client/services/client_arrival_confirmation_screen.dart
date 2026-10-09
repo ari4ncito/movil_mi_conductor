@@ -45,7 +45,7 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withOpacity(0.3),
+                      color: AppColors.petrolDark.withValues(alpha: 0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -70,7 +70,7 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
+              const Text(
                 'Tu conductor ha llegado al destino. Confirma para finalizar el servicio.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -91,7 +91,7 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                   border: Border.all(color: AppColors.borderGray, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withOpacity(0.08),
+                      color: AppColors.petrolDark.withValues(alpha: 0.08),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -105,13 +105,13 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                       value: '\$150.00',
                       highlight: true,
                     ),
-                    Divider(height: 32, color: AppColors.borderGray),
+                    const Divider(height: 32, color: AppColors.borderGray),
                     _buildInfoRow(
                       icon: Icons.timer_outlined,
                       label: 'Duración',
                       value: '25 min',
                     ),
-                    Divider(height: 32, color: AppColors.borderGray),
+                    const Divider(height: 32, color: AppColors.borderGray),
                     _buildInfoRow(
                       icon: Icons.route,
                       label: 'Distancia',
@@ -135,7 +135,7 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.petrolDark.withOpacity(0.3),
+                        color: AppColors.petrolDark.withValues(alpha: 0.3),
                         blurRadius: 14,
                         offset: const Offset(0, 6),
                       ),
@@ -193,7 +193,7 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.accentOrange.withOpacity(0.12),
+                color: AppColors.accentOrange.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -205,7 +205,7 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
             const SizedBox(width: 12),
             Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 color: AppColors.slateGray,
               ),

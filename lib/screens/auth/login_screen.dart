@@ -49,11 +49,6 @@ class _LoginScreenState extends State<LoginScreen> {
       final usuario = resultado['usuario'];
 
       final String rol = usuario['rol'];
-      final String token = resultado['token'];
-
-      print('Token: $token');
-      print('Usuario: ${usuario['nombre']}');
-      print('Rol: $rol');
 
       if (!mounted) return;
 

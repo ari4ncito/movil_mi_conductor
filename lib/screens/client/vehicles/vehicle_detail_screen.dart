@@ -60,7 +60,7 @@ class VehicleDetailScreen extends StatelessWidget {
                   border: Border.all(color: AppColors.borderGray, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withOpacity(0.08),
+                      color: AppColors.petrolDark.withValues(alpha: 0.08),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -76,13 +76,13 @@ class VehicleDetailScreen extends StatelessWidget {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            AppColors.petrolLight.withOpacity(0.15),
-                            AppColors.petrolDark.withOpacity(0.15),
+                            AppColors.petrolLight.withValues(alpha: 0.15),
+                            AppColors.petrolDark.withValues(alpha: 0.15),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: AppColors.petrolBase.withOpacity(0.15),
+                          color: AppColors.petrolBase.withValues(alpha: 0.15),
                           width: 1,
                         ),
                       ),
@@ -173,7 +173,7 @@ class VehicleDetailScreen extends StatelessWidget {
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.danger,
-                    backgroundColor: AppColors.danger.withOpacity(0.05),
+                    backgroundColor: AppColors.danger.withValues(alpha: 0.05),
                     side: const BorderSide(color: AppColors.danger),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -204,7 +204,7 @@ class VehicleDetailScreen extends StatelessWidget {
         border: Border.all(color: AppColors.borderGray, width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppColors.petrolDark.withOpacity(0.05),
+            color: AppColors.petrolDark.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -216,7 +216,7 @@ class VehicleDetailScreen extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppColors.petrolDark.withOpacity(0.1),
+              color: AppColors.petrolDark.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: AppColors.petrolDark),

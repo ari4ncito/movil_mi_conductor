@@ -61,7 +61,7 @@ class RequestRideScreen extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -102,7 +102,7 @@ class RequestRideScreen extends StatelessWidget {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -132,7 +132,7 @@ class RequestRideScreen extends StatelessWidget {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: AppColors.petrolLight.withOpacity(0.25),
+                      color: AppColors.petrolLight.withValues(alpha: 0.25),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -148,7 +148,7 @@ class RequestRideScreen extends StatelessWidget {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.petrolBase.withOpacity(0.5),
+                              color: AppColors.petrolBase.withValues(alpha: 0.5),
                               blurRadius: 8,
                             ),
                           ],
@@ -171,7 +171,7 @@ class RequestRideScreen extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppColors.accentOrange.withOpacity(0.25),
+                      color: AppColors.accentOrange.withValues(alpha: 0.25),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -183,7 +183,7 @@ class RequestRideScreen extends StatelessWidget {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.accentOrange.withOpacity(0.5),
+                              color: AppColors.accentOrange.withValues(alpha: 0.5),
                               blurRadius: 8,
                             ),
                           ],
@@ -213,7 +213,7 @@ class RequestRideScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.25),
+                    color: Colors.black.withValues(alpha: 0.25),
                     blurRadius: 16,
                     offset: const Offset(0, -2),
                   ),
@@ -270,7 +270,7 @@ class RequestRideScreen extends StatelessWidget {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: AppColors.accentOrange.withOpacity(0.12),
+                            color: AppColors.accentOrange.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
@@ -297,7 +297,7 @@ class MapGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.petrolLight.withOpacity(0.18)
+      ..color = AppColors.petrolLight.withValues(alpha: 0.18)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
@@ -321,7 +321,7 @@ class MapGridPainter extends CustomPainter {
 
     // Líneas diagonales
     final diagonalPaint = Paint()
-      ..color = AppColors.accentOrange.withOpacity(0.1)
+      ..color = AppColors.accentOrange.withValues(alpha: 0.1)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 

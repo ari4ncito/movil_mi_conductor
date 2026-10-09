@@ -69,13 +69,19 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
 
               // Stats Grid
               GridView.count(
-                crossAxisCount: 3,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
                 shrinkWrap: true,
-                childAspectRatio: 0.85,
+                childAspectRatio: 1.5,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
+                  _buildStatCard(
+                    icon: Icons.attach_money,
+                    value: '—',
+                    label: 'Ganancias',
+                    color: Colors.green,
+                  ),
                   _buildStatCard(
                     icon: Icons.local_taxi,
                     value: _completedCount.toString(),
@@ -110,33 +116,36 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Recent Rides List
-              _buildRideCard(
-                context,
-                date: 'Hoy, 14:30',
-                pickup: 'Centro Histórico',
-                destination: 'Zona Rosa',
-                driver: 'Carlos R.',
-                driverRating: 4.9,
-              ),
-              const SizedBox(height: 12),
-              _buildRideCard(
-                context,
-                date: 'Ayer, 09:15',
-                pickup: 'Polanco',
-                destination: 'Aeropuerto',
-                driver: 'María G.',
-                driverRating: 4.8,
-              ),
-              const SizedBox(height: 12),
-              _buildRideCard(
-                context,
-                date: '12 Ene, 18:45',
-                pickup: 'Condesa',
-                destination: 'Roma Norte',
-                driver: 'Luis M.',
-                driverRating: 4.7,
-              ),
+              if (_isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_error != null)
+                _buildStatusMessage(_error!, onRetry: _loadSolicitudes)
+              else if (_solicitudes.isEmpty)
+                _buildStatusMessage('Aún no tienes servicios registrados.')
+              else
+                ..._solicitudes.map(
+                  (solicitud) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildRideCard(
+                      context,
+                      date: _formatDate(
+                        solicitud.fechaSolicitud ?? solicitud.createdAt,
+                      ),
+                      pickup: solicitud.origen ?? 'Origen no disponible',
+                      destination: solicitud.destino ?? 'Destino no disponible',
+                      driver: solicitud.correoCliente ??
+                          solicitud.clienteId ??
+                          'Cliente',
+                      driverRating: 5.0,
+                      status: solicitud.estado,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -181,62 +190,63 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 20,
-            ),
-          ),
-          const SizedBox(height: 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Center(
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                  height: 1.1,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 20,
+                ),
               ),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -250,7 +260,6 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
     String destination,
     String driver,
     double driverRating,
-    String? comentario,
   ) {
     showModalBottomSheet(
       context: context,
@@ -411,25 +420,6 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 16),
-            const Text(
-              'Comentario',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              (comentario != null && comentario.isNotEmpty) ? comentario : 'Ninguno',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-                fontStyle: (comentario == null || comentario.isEmpty) ? FontStyle.italic : FontStyle.normal,
-              ),
-            ),
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
@@ -446,7 +436,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                 child: const Text('Cerrar Detalles', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
-            SafeArea(child: const SizedBox(height: 16)),
+            const SafeArea(child: SizedBox(height: 16)),
           ],
         ),
       ),
@@ -461,7 +451,6 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
     required String driver,
     required double driverRating,
     String? status,
-    String? comentario,
   }) {
     return Container(
       width: double.infinity,
@@ -471,7 +460,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -492,7 +481,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                 ),
               ),
               InkWell(
-                onTap: () => _showRideDetails(context, date, pickup, destination, driver, driverRating, comentario),
+                onTap: () => _showRideDetails(context, date, pickup, destination, driver, driverRating),
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -500,12 +489,12 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                     color: const Color(0xFFF0F5F7),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.remove_red_eye_outlined, size: 16, color: Color(0xFF12566B)),
-                      const SizedBox(width: 4),
-                      const Text(
+                      Icon(Icons.remove_red_eye_outlined, size: 16, color: Color(0xFF12566B)),
+                      SizedBox(width: 4),
+                      Text(
                         'Ver detalles',
                         style: TextStyle(
                           fontSize: 12,
@@ -527,7 +516,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   Container(
                     width: 12,
                     height: 12,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.green,
                       shape: BoxShape.circle,
                     ),
@@ -536,8 +525,8 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   Container(
                     width: 12,
                     height: 12,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF8A00),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF8A00),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -573,8 +562,8 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   Container(
                     width: 40,
                     height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F7FA),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF5F7FA),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.person, color: Colors.black),

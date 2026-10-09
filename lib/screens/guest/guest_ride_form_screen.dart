@@ -153,7 +153,7 @@ class _GuestRideFormScreenState extends State<GuestRideFormScreen> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
+                                color: Colors.black.withValues(alpha: 0.15),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -183,7 +183,7 @@ class _GuestRideFormScreenState extends State<GuestRideFormScreen> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
+                              color: Colors.black.withValues(alpha: 0.15),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -240,7 +240,7 @@ class _GuestRideFormScreenState extends State<GuestRideFormScreen> {
                           borderRadius: BorderRadius.circular(32),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
+                              color: Colors.black.withValues(alpha: 0.15),
                               blurRadius: 20,
                               offset: const Offset(0, 4),
                             ),
@@ -261,7 +261,7 @@ class _GuestRideFormScreenState extends State<GuestRideFormScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 12),
-                                  Expanded(
+                                  const Expanded(
                                     child: CustomTextField(
                                       labelText: 'APELLIDOS',
                                       hintText: 'Ej. Ortega',
@@ -432,7 +432,7 @@ class MapGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFB8860B).withOpacity(0.15)
+      ..color = const Color(0xFFB8860B).withValues(alpha: 0.15)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
@@ -453,7 +453,7 @@ class MapGridPainter extends CustomPainter {
     }
 
     final diagonalPaint = Paint()
-      ..color = const Color(0xFFCD853F).withOpacity(0.1)
+      ..color = const Color(0xFFCD853F).withValues(alpha: 0.1)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 

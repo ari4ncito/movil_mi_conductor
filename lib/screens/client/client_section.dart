@@ -126,10 +126,10 @@ class _ClientSectionState extends State<ClientSection> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
+              color: Colors.white.withValues(alpha: 0.12),
               shape: BoxShape.circle,
               border: Border.all(
-                color: Colors.white.withOpacity(0.25),
+                color: Colors.white.withValues(alpha: 0.25),
                 width: 1,
               ),
             ),
@@ -162,7 +162,7 @@ class _ClientSectionState extends State<ClientSection> {
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w400,
-                    color: Colors.white.withOpacity(0.75),
+                    color: Colors.white.withValues(alpha: 0.75),
                   ),
                 ),
               ],
@@ -172,10 +172,10 @@ class _ClientSectionState extends State<ClientSection> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: AppColors.accentOrange.withOpacity(0.18),
+                color: AppColors.accentOrange.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: AppColors.accentOrange.withOpacity(0.5),
+                  color: AppColors.accentOrange.withValues(alpha: 0.5),
                   width: 1,
                 ),
               ),
@@ -205,7 +205,7 @@ class _ClientSectionState extends State<ClientSection> {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textPrimary.withOpacity(0.08),
+            color: AppColors.textPrimary.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, -6),
           ),
@@ -260,7 +260,7 @@ class _NavButton extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
-      splashColor: AppColors.petrolLight.withOpacity(0.15),
+      splashColor: AppColors.petrolLight.withValues(alpha: 0.15),
       highlightColor: Colors.transparent,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 260),
@@ -291,7 +291,7 @@ class _NavButton extends StatelessWidget {
                 boxShadow: selected
                     ? [
                         BoxShadow(
-                          color: AppColors.petrolBase.withOpacity(0.35),
+                          color: AppColors.petrolBase.withValues(alpha: 0.35),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),

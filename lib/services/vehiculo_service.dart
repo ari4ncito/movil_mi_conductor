@@ -12,7 +12,7 @@ class VehiculoService {
     if (token == null) throw Exception('No hay sesión activa.');
 
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/vehículos'),
+      Uri.parse('${ApiConfig.baseUrl}/vehiculos'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -39,7 +39,7 @@ class VehiculoService {
     if (token == null) throw Exception('No hay sesión activa.');
 
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/vehículos/cliente/$clienteId'),
+      Uri.parse('${ApiConfig.baseUrl}/vehiculos/cliente/$clienteId'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -63,7 +63,7 @@ class VehiculoService {
     if (token == null) throw Exception('No hay sesión activa.');
 
     final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/vehículos'),
+      Uri.parse('${ApiConfig.baseUrl}/vehiculos'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -88,7 +88,7 @@ class VehiculoService {
     if (token == null) throw Exception('No hay sesión activa.');
 
     final response = await http.put(
-      Uri.parse('${ApiConfig.baseUrl}/vehículos/$id'),
+      Uri.parse('${ApiConfig.baseUrl}/vehiculos/$id'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -113,7 +113,7 @@ class VehiculoService {
     if (token == null) throw Exception('No hay sesión activa.');
 
     final response = await http.delete(
-      Uri.parse('${ApiConfig.baseUrl}/vehículos/$id'),
+      Uri.parse('${ApiConfig.baseUrl}/vehiculos/$id'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',

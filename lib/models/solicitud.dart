@@ -15,6 +15,8 @@ class Solicitud {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? motivoCancelacion;
+  final Map<String, dynamic>? conductorData;
+  final Map<String, dynamic>? vehiculoData;
 
   const Solicitud({
     this.id,
@@ -33,6 +35,8 @@ class Solicitud {
     this.createdAt,
     this.updatedAt,
     this.motivoCancelacion,
+    this.conductorData,
+    this.vehiculoData,
   });
 
   String? get clienteId => cliente;
@@ -60,6 +64,9 @@ class Solicitud {
     createdAt: _date(json['createdAt']),
     updatedAt: _date(json['updatedAt']),
     motivoCancelacion: _string(json['motivoCancelacion']),
+    conductorData: json['conductorAsignado'] is Map ? Map<String, dynamic>.from(json['conductorAsignado']) : 
+                   json['conductor'] is Map ? Map<String, dynamic>.from(json['conductor']) : null,
+    vehiculoData: json['vehiculo'] is Map ? Map<String, dynamic>.from(json['vehiculo']) : null,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{

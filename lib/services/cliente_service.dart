@@ -101,4 +101,31 @@ class ClienteService {
       throw Exception(data['message'] ?? 'Error al eliminar el cliente.');
     }
   }
+
+  // =========================
+  // OBTENER CLIENTE DEL USUARIO ACTUAL
+  // =========================
+  static Future<Map<String, dynamic>?> obtenerClienteActual() async {
+    final usuario = await AuthService.obtenerUsuario();
+    if (usuario == null) return null;
+
+    final usuarioId = usuario['_id'] ?? usuario['id'];
+    if (usuarioId == null) return null;
+
+    try {
+      final clientes = await getAll();
+      for (final c in clientes) {
+        if (c is Map<String, dynamic>) {
+          final u = c['usuario'];
+          if (u is Map && (u['_id'] == usuarioId || u['id'] == usuarioId)) {
+            return c;
+          } else if (u == usuarioId) {
+            return c;
+          }
+        }
+      }
+    } catch (_) {}
+
+    return null;
+  }
 }

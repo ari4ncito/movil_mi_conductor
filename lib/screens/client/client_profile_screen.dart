@@ -57,7 +57,7 @@ class ClientProfileScreen extends StatelessWidget {
                   border: Border.all(color: AppColors.borderGray, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withOpacity(0.08),
+                      color: AppColors.petrolDark.withValues(alpha: 0.08),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -78,7 +78,7 @@ class ClientProfileScreen extends StatelessWidget {
                         border: Border.all(color: AppColors.white, width: 3),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.petrolDark.withOpacity(0.28),
+                            color: AppColors.petrolDark.withValues(alpha: 0.28),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -103,7 +103,7 @@ class ClientProfileScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.accentOrange.withOpacity(0.12),
+                        color: AppColors.accentOrange.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Text(
@@ -144,7 +144,7 @@ class ClientProfileScreen extends StatelessWidget {
                   border: Border.all(color: AppColors.borderGray, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withOpacity(0.08),
+                      color: AppColors.petrolDark.withValues(alpha: 0.08),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -244,7 +244,7 @@ class ClientProfileScreen extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.petrolDark.withOpacity(0.3),
+                        color: AppColors.petrolDark.withValues(alpha: 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 6),
                       ),
@@ -307,7 +307,7 @@ class ClientProfileScreen extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.accentOrange.withOpacity(0.12),
+                color: AppColors.accentOrange.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(

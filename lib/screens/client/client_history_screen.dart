@@ -83,7 +83,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
 
               const SizedBox(height: 8),
 
-              Text(
+              const Text(
                 'Viajes realizados y pedidos anteriores',
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
@@ -250,7 +250,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: AppColors.petrolDark.withOpacity(0.06),
+            color: AppColors.petrolDark.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -279,7 +279,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
 
                 Text(
                   label,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
@@ -297,9 +297,9 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
-              border: Border.all(color: color.withOpacity(0.25), width: 1),
+              border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
             ),
             child: Icon(icon, color: color, size: 24),
           ),
@@ -324,7 +324,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: AppColors.petrolDark.withOpacity(0.06),
+            color: AppColors.petrolDark.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -339,7 +339,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
               Flexible(
                 child: Text(
                   date,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
@@ -375,7 +375,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withOpacity(0.25),
+                      color: AppColors.petrolDark.withValues(alpha: 0.25),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -469,7 +469,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
                   children: [
                     Text(
                       from,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
@@ -482,7 +482,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
 
                     Text(
                       to,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500,

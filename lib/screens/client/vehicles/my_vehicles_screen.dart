@@ -14,6 +14,7 @@ class MyVehiclesScreen extends StatefulWidget {
 class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 	List<dynamic> _vehicles = [];
 	bool _isLoading = true;
+	// ignore: unused_field
 	String? _clienteId;
 
 	@override
@@ -163,7 +164,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 					Icon(
 						Icons.directions_car_outlined,
 						size: 64,
-						color: const Color(0xFF12566B).withOpacity(0.45),
+						color: const Color(0xFF12566B).withValues(alpha: 0.45),
 					),
 					const SizedBox(height: 12),
 					const Text(

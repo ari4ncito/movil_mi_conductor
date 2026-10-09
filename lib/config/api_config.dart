@@ -24,7 +24,10 @@ class ApiConfig {
     final normalizedBase = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;
-    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    var normalizedPath = path.startsWith('/') ? path : '/$path';
+    if (normalizedBase.endsWith('/api') && normalizedPath.startsWith('/api/')) {
+      normalizedPath = normalizedPath.substring(4);
+    }
     return Uri.parse('$normalizedBase$normalizedPath').replace(
       queryParameters: queryParameters == null || queryParameters.isEmpty
           ? null
