@@ -17,17 +17,17 @@ class SolicitudService {
       if (_validId(conductorId)) 'conductor': conductorId!,
       if (estado != null && estado.trim().isNotEmpty) 'estado': estado,
     };
-    return _list(await client.get('/api/solicitudes/', queryParameters: query));
+    return _list(await client.get('/solicitudes/', queryParameters: query));
   }
 
   Future<Solicitud> obtenerPorId(String id) async {
     _requireId(id);
-    return Solicitud.fromJson(_map(await client.get('/api/solicitudes/$id')));
+    return Solicitud.fromJson(_map(await client.get('/solicitudes/$id')));
   }
 
   Future<Solicitud> crearSolicitud(Solicitud solicitud) async {
     return Solicitud.fromJson(
-      _map(await client.post('/api/solicitudes/', body: solicitud.toJson())),
+      _map(await client.post('/solicitudes/', body: solicitud.toJson())),
     );
   }
 
@@ -49,7 +49,7 @@ class SolicitudService {
     return Solicitud.fromJson(
       _map(
         await client.patch(
-          '/api/solicitudes/$id/asignar-conductor',
+          '/solicitudes/$id/asignar-conductor',
           body: {'conductor': conductorId},
         ),
       ),
@@ -61,7 +61,7 @@ class SolicitudService {
     return Solicitud.fromJson(
       _map(
         await client.patch(
-          '/api/solicitudes/$id/cancelar',
+          '/solicitudes/$id/cancelar',
           body: {
             if (motivo != null && motivo.trim().isNotEmpty) 'motivo': motivo,
           },
@@ -76,7 +76,7 @@ class SolicitudService {
   Future<Solicitud> completar(String id) async {
     _requireId(id);
     return Solicitud.fromJson(
-      _map(await client.patch('/api/solicitudes/$id/completar')),
+      _map(await client.patch('/solicitudes/$id/completar')),
     );
   }
 
@@ -85,7 +85,7 @@ class SolicitudService {
   Future<Solicitud> actualizar(String id, Solicitud solicitud) async {
     _requireId(id);
     return Solicitud.fromJson(
-      _map(await client.put('/api/solicitudes/$id', body: solicitud.toJson())),
+      _map(await client.put('/solicitudes/$id', body: solicitud.toJson())),
     );
   }
 

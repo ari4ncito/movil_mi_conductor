@@ -59,7 +59,7 @@ class GuestTrackingScreen extends StatelessWidget {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
+                              color: Colors.black.withValues(alpha: 0.15),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -80,23 +80,23 @@ class GuestTrackingScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(30),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
+                              color: Colors.black.withValues(alpha: 0.15),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                        child: Row(
+                        child: const Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.access_time,
                               color: Color(0xFFFF8A00),
                               size: 20,
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Text(
                               '15 min',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black87,
@@ -115,7 +115,7 @@ class GuestTrackingScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(32),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 20,
                           offset: const Offset(0, -4),
                         ),
@@ -141,9 +141,9 @@ class GuestTrackingScreen extends StatelessWidget {
                               Container(
                                 width: 48,
                                 height: 48,
-                                decoration: BoxDecoration(
+                                decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
-                                  image: const DecorationImage(
+                                  image: DecorationImage(
                                     image: NetworkImage(
                                       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop',
                                     ),
@@ -190,8 +190,8 @@ class GuestTrackingScreen extends StatelessWidget {
                                   Container(
                                     width: 44,
                                     height: 44,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF0F4F8),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFF0F4F8),
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(
@@ -204,8 +204,8 @@ class GuestTrackingScreen extends StatelessWidget {
                                   Container(
                                     width: 44,
                                     height: 44,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF0F4F8),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFF0F4F8),
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(

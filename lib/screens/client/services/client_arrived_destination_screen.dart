@@ -50,15 +50,15 @@ class _ClientArrivedDestinationScreenState
                   border: Border.all(color: AppColors.borderGray, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withOpacity(0.08),
+                      color: AppColors.petrolDark.withValues(alpha: 0.08),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
+                  children: [
                     Icon(Icons.check_circle, size: 16, color: AppColors.accentOrange),
                     SizedBox(width: 6),
                     Text(
@@ -86,7 +86,7 @@ class _ClientArrivedDestinationScreenState
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withOpacity(0.25),
+                      color: AppColors.petrolDark.withValues(alpha: 0.25),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -108,15 +108,15 @@ class _ClientArrivedDestinationScreenState
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.star,
                     color: AppColors.accentOrange,
                     size: 18,
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: 4),
                   Text(
                     '4.9 · 240 viajes',
                     style: TextStyle(
@@ -191,7 +191,7 @@ class _ClientArrivedDestinationScreenState
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.petrolDark.withOpacity(0.3),
+                        color: AppColors.petrolDark.withValues(alpha: 0.3),
                         blurRadius: 14,
                         offset: const Offset(0, 6),
                       ),
@@ -289,7 +289,7 @@ class _ClientArrivedDestinationScreenState
                     ),
                   );
                 },
-                child: Text(
+                child: const Text(
                   'Reportar problema',
                   style: TextStyle(
                     fontSize: 14,
@@ -318,7 +318,7 @@ class _ClientArrivedDestinationScreenState
         border: Border.all(color: AppColors.borderGray, width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppColors.petrolDark.withOpacity(0.08),
+            color: AppColors.petrolDark.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -330,7 +330,7 @@ class _ClientArrivedDestinationScreenState
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppColors.accentOrange.withOpacity(0.12),
+              color: AppColors.accentOrange.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -351,7 +351,7 @@ class _ClientArrivedDestinationScreenState
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
               color: AppColors.slateGray,
               fontWeight: FontWeight.w500,

@@ -1,4 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http;
+import '../../../models/solicitud.dart';
 import 'client_arrival_confirmation_screen.dart';
 
 // ─────────────────────────────────────────────
@@ -19,30 +24,197 @@ class AppColors {
   static const Color success = Color(0xFF2E7D5B); // verde para "punto de origen"
 }
 
-class ClientDriverTrackingScreen extends StatelessWidget {
-  const ClientDriverTrackingScreen({super.key});
+class ClientDriverTrackingScreen extends StatefulWidget {
+  final Solicitud? solicitud;
+
+  const ClientDriverTrackingScreen({super.key, this.solicitud});
+
+  @override
+  State<ClientDriverTrackingScreen> createState() => _ClientDriverTrackingScreenState();
+}
+
+class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen> {
+  List<LatLng> _routePoints = [];
+  bool _isLoadingRoute = true;
+  final MapController _mapController = MapController();
+  
+  // Coordenadas fallback (Medellín, Colombia)
+  LatLng _startPoint = const LatLng(6.2442, -75.5812);
+  LatLng _endPoint = const LatLng(6.2518, -75.5636);
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeMapAndRoute();
+  }
+
+  Future<void> _initializeMapAndRoute() async {
+    // 1. Intentar obtener coordenadas reales
+    final originAddress = widget.solicitud?.origen;
+    final destAddress = widget.solicitud?.destino;
+
+    if (originAddress != null && originAddress.isNotEmpty) {
+      final startCoords = await _geocodeAddress(originAddress);
+      if (startCoords != null && mounted) {
+        setState(() => _startPoint = startCoords);
+      }
+    }
+    if (destAddress != null && destAddress.isNotEmpty) {
+      final endCoords = await _geocodeAddress(destAddress);
+      if (endCoords != null && mounted) {
+        setState(() => _endPoint = endCoords);
+      }
+    }
+
+    // 2. Obtener ruta con OSRM
+    await _fetchRoute();
+  }
+
+  Future<LatLng?> _geocodeAddress(String address) async {
+    try {
+      // Append Medellín, Colombia to improve geocoding accuracy
+      final searchAddress = '$address, Medellín, Colombia';
+      final url = 'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(searchAddress)}&format=json&limit=1';
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as List;
+        if (data.isNotEmpty) {
+          final lat = double.parse(data[0]['lat'].toString());
+          final lon = double.parse(data[0]['lon'].toString());
+          return LatLng(lat, lon);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error geocoding address: $e');
+    }
+    return null;
+  }
+
+  Future<void> _fetchRoute() async {
+    try {
+      final url =
+          'http://router.project-osrm.org/route/v1/driving/${_startPoint.longitude},${_startPoint.latitude};${_endPoint.longitude},${_endPoint.latitude}?overview=full&geometries=geojson';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['routes'] != null && data['routes'].isNotEmpty) {
+          final geometry = data['routes'][0]['geometry'];
+          final List coordinates = geometry['coordinates'];
+          setState(() {
+            _routePoints = coordinates
+                .map((coord) => LatLng(coord[1], coord[0]))
+                .toList();
+            _isLoadingRoute = false;
+          });
+          _fitMapToRoute();
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching route: $e');
+    }
+    
+    // Fallback a línea recta en caso de error
+    if (mounted) {
+      setState(() {
+        _routePoints = [_startPoint, _endPoint];
+        _isLoadingRoute = false;
+      });
+      _fitMapToRoute();
+    }
+  }
+
+  void _fitMapToRoute() {
+    if (_routePoints.isNotEmpty) {
+      final bounds = LatLngBounds.fromPoints(_routePoints);
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: bounds,
+          padding: const EdgeInsets.all(50.0),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Extraer datos reales
+    final driverName = widget.solicitud?.conductorData?['nombre'] ?? 'Conductor Asignado';
+    final vehicleData = widget.solicitud?.vehiculoData ?? {};
+    final marca = vehicleData['marca'] ?? 'Vehículo';
+    final modelo = vehicleData['modelo'] ?? '';
+    final placa = vehicleData['placa'] ?? '';
+    final color = vehicleData['color'] ?? '';
+    final vehicleDetails = [marca, modelo, placa, color].where((s) => s.toString().isNotEmpty).join(' · ');
+
+    final originAddress = widget.solicitud?.origen ?? 'Punto de Origen';
+    final destAddress = widget.solicitud?.destino ?? 'Punto de Destino';
+
     return Scaffold(
       body: Stack(
         children: [
-          // Fondo del mapa (simplificado) — azul petróleo en vez de verde
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.background,
-                  Color(0xFFDCE6E9),
+          // Mapa real con OpenStreetMap
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _startPoint,
+              initialZoom: 13.0,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.mi_conductor',
+              ),
+              if (!_isLoadingRoute)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _routePoints,
+                      color: AppColors.petrolLight,
+                      strokeWidth: 5.0,
+                    ),
+                  ],
+                ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: _startPoint,
+                    width: 20,
+                    height: 20,
+                    child: const CircleAvatar(
+                      backgroundColor: AppColors.success,
+                      radius: 10,
+                      child: CircleAvatar(
+                        backgroundColor: Colors.white,
+                        radius: 8,
+                        child: CircleAvatar(
+                          backgroundColor: AppColors.success,
+                          radius: 5,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Marker(
+                    point: _endPoint,
+                    width: 20,
+                    height: 20,
+                    child: const CircleAvatar(
+                      backgroundColor: AppColors.accentOrange,
+                      radius: 10,
+                      child: CircleAvatar(
+                        backgroundColor: Colors.white,
+                        radius: 8,
+                        child: CircleAvatar(
+                          backgroundColor: AppColors.accentOrange,
+                          radius: 5,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-            ),
-            child: CustomPaint(
-              painter: MapBackgroundPainter(),
-              size: Size.infinite,
-            ),
+            ],
           ),
 
           // Header
@@ -58,7 +230,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.petrolDark.withOpacity(0.12),
+                          color: AppColors.petrolDark.withAlpha(30), // fixed withOpacity warning
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -86,7 +258,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.petrolDark.withOpacity(0.12),
+                          color: AppColors.petrolDark.withAlpha(30),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -116,7 +288,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.petrolBase.withOpacity(0.4),
+                    color: AppColors.petrolBase.withAlpha(100),
                     blurRadius: 14,
                     offset: const Offset(0, 4),
                   ),
@@ -141,7 +313,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                 border: Border.all(color: AppColors.borderGray, width: 1),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.petrolDark.withOpacity(0.15),
+                    color: AppColors.petrolDark.withAlpha(40),
                     blurRadius: 20,
                     offset: const Offset(0, -4),
                   ),
@@ -174,23 +346,24 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Julian Vance',
-                                style: TextStyle(
+                              Text(
+                                driverName,
+                                style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.textPrimary,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 4),
-                              Row(
+                              const Row(
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.star,
                                     color: AppColors.accentOrange,
                                     size: 16,
                                   ),
-                                  const SizedBox(width: 4),
+                                  SizedBox(width: 4),
                                   Text(
                                     '4.9 · 240 viajes',
                                     style: TextStyle(
@@ -202,16 +375,19 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Toyota Corolla · ABC 123 · Rojo',
-                                style: TextStyle(
+                                vehicleDetails.isEmpty ? 'Vehículo no especificado' : vehicleDetails,
+                                style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.slateGray,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
                               width: 44,
@@ -227,7 +403,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                 size: 20,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 8),
                             Container(
                               width: 44,
                               height: 44,
@@ -269,10 +445,10 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              const Expanded(
+                              Expanded(
                                 child: Text(
-                                  'Av. Paseo de la Reforma 250',
-                                  style: TextStyle(
+                                  originAddress,
+                                  style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.textPrimary,
@@ -300,10 +476,10 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              const Expanded(
+                              Expanded(
                                 child: Text(
-                                  'Aeropuerto Internacional La Aurora',
-                                  style: TextStyle(
+                                  destAddress,
+                                  style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.textPrimary,
@@ -318,13 +494,13 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     // Tiempo estimado
-                    Row(
+                    const Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Llegada estimada',
                               style: TextStyle(
                                 fontSize: 12,
@@ -332,7 +508,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text(
                               '14:30',
                               style: TextStyle(
@@ -346,7 +522,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Tiempo restante',
                               style: TextStyle(
                                 fontSize: 12,
@@ -354,7 +530,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Text(
                               '15 min',
                               style: TextStyle(
@@ -382,7 +558,7 @@ class ClientDriverTrackingScreen extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.petrolDark.withOpacity(0.3),
+                              color: AppColors.petrolDark.withAlpha(76),
                               blurRadius: 14,
                               offset: const Offset(0, 6),
                             ),
@@ -427,49 +603,4 @@ class ClientDriverTrackingScreen extends StatelessWidget {
     );
   }
 }
-
-// Painter para dibujar un fondo de mapa simplificado
-class MapBackgroundPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.petrolBase.withOpacity(0.08)
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-
-    // Dibujar líneas horizontales
-    for (double i = 0; i < size.height; i += 40) {
-      canvas.drawLine(
-        Offset(0, i),
-        Offset(size.width, i),
-        paint,
-      );
-    }
-
-    // Dibujar líneas verticales
-    for (double i = 0; i < size.width; i += 40) {
-      canvas.drawLine(
-        Offset(i, 0),
-        Offset(i, size.height),
-        paint,
-      );
-    }
-
-    // Dibujar algunas líneas diagonales para dar aspecto de mapa
-    final diagonalPaint = Paint()
-      ..color = AppColors.petrolBase.withOpacity(0.12)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    for (double i = -size.width; i < size.width * 2; i += 80) {
-      canvas.drawLine(
-        Offset(i, 0),
-        Offset(i + size.width, size.height),
-        diagonalPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
+

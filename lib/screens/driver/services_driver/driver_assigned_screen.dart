@@ -63,7 +63,7 @@ class _DriverAssignedScreenState extends State<DriverAssignedScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -82,8 +82,8 @@ class _DriverAssignedScreenState extends State<DriverAssignedScreen> {
                       Container(
                         width: 32,
                         height: 32,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF8A00),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFF8A00),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -113,7 +113,7 @@ class _DriverAssignedScreenState extends State<DriverAssignedScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -148,7 +148,7 @@ class _DriverAssignedScreenState extends State<DriverAssignedScreen> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -196,7 +196,7 @@ class _DriverAssignedScreenState extends State<DriverAssignedScreen> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.2),
+                      color: Colors.blue.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -230,7 +230,7 @@ class _DriverAssignedScreenState extends State<DriverAssignedScreen> {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
+                    color: Colors.black.withValues(alpha: 0.15),
                     blurRadius: 20,
                     offset: const Offset(0, -4),
                   ),
@@ -451,7 +451,7 @@ class LightMapGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFB8860B).withOpacity(0.12)
+      ..color = const Color(0xFFB8860B).withValues(alpha: 0.12)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
@@ -475,7 +475,7 @@ class LightMapGridPainter extends CustomPainter {
 
     // Líneas diagonales
     final diagonalPaint = Paint()
-      ..color = const Color(0xFFCD853F).withOpacity(0.08)
+      ..color = const Color(0xFFCD853F).withValues(alpha: 0.08)
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 

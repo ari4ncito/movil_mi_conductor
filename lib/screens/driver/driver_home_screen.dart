@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/conductor_service.dart';
+import '../../services/solicitud_service.dart';
+import '../../models/solicitud.dart';
+import 'services_driver/driver_navigation_screen.dart';
 
 class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({super.key});
@@ -16,15 +20,61 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
   bool _isAvailable = false;
 
+  // ignore: unused_field
   String? _conductorId;
+  // ignore: unused_field
   Map<String, dynamic>? _conductor;
 
   String? _error;
+  
+  Timer? _pollingTimer;
+  Solicitud? _solicitudAsignada;
+  final SolicitudService _solicitudService = SolicitudService();
+  String _debugPollingText = 'Inicializando...';
 
   @override
   void initState() {
     super.initState();
     _cargarConductor();
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      if (!_isAvailable || _conductorId == null) return;
+      try {
+        final solicitudes = await _solicitudService.listar();
+        final activa = solicitudes.where((s) {
+          final isTerminated = ['Completada', 'Cancelada', 'Cancelado', 'Completado', 'Finalizada', 'Finalizado'].contains(s.estado);
+          final matchesConductor = s.conductorId == _conductorId;
+          return !isTerminated && matchesConductor;
+        }).toList();
+        
+        if (mounted) {
+          setState(() {
+            _debugPollingText = 'ConductorId: $_conductorId\nTotal solicitudes recibidas: ${solicitudes.length}\nActivas para ti: ${activa.length}\nEjemplo conductorIds recibidos: ${solicitudes.take(3).map((s) => s.conductorId).join(',')}';
+            if (activa.isNotEmpty) {
+              _solicitudAsignada = activa.first;
+            } else {
+              _solicitudAsignada = null;
+            }
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _debugPollingText = 'Error en polling: $e';
+          });
+        }
+        debugPrint('Error en polling de solicitudes: $e');
+      }
+    });
   }
 
   // =========================
@@ -58,10 +108,14 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
       setState(() {
         _conductor = conductor;
-        _conductorId = conductor['_id']?.toString();
+        _conductorId = conductor['_id']?.toString() ?? conductor['id']?.toString();
         _isAvailable = conductor['disponible'] == true;
         _isLoading = false;
       });
+      
+      if (_isAvailable) {
+        _startPolling();
+      }
     } catch (error) {
       if (!mounted) return;
 
@@ -109,6 +163,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         _isUpdatingAvailability = false;
       });
 
+      if (_isAvailable) {
+        _startPolling();
+      } else {
+        _pollingTimer?.cancel();
+        _solicitudAsignada = null;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -139,12 +200,12 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF5F7F8),
+      return const Scaffold(
+        backgroundColor: Color(0xFFF5F7F8),
         body: SafeArea(
           child: Center(
             child: CircularProgressIndicator(
-              color: const Color(0xFFFF8A00),
+              color: Color(0xFFFF8A00),
             ),
           ),
         ),
@@ -235,7 +296,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
+                            color: Colors.black.withValues(alpha: 0.06),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -271,7 +332,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                             onChanged: _isUpdatingAvailability
                                 ? null
                                 : _cambiarDisponibilidad,
-                            activeColor: const Color(0xFFFF8A00),
+                            activeThumbColor: const Color(0xFFFF8A00),
                             inactiveThumbColor: Colors.grey[400],
                           ),
                         ],
@@ -292,13 +353,14 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
+                              color: Colors.black.withValues(alpha: 0.06),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        child: Column(
+                        child: _solicitudAsignada == null 
+                        ? Column(
                           children: [
                             Container(
                               width: 80,
@@ -327,11 +389,125 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
+                              _debugPollingText,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.blueGrey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
                               'La nueva solicitud aparecerá aquí automáticamente.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        )
+                        : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  '¡Nueva Solicitud!',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFFFF8A00),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green[50],
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    _solicitudAsignada!.estado ?? '',
+                                    style: TextStyle(
+                                      color: Colors.green[700],
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const CircleAvatar(
+                                backgroundColor: Color(0xFFF8F9FA),
+                                child: Icon(Icons.person, color: Color(0xFF16262D)),
+                              ),
+                              title: const Text('Cliente'),
+                              subtitle: Text(
+                                _solicitudAsignada!.cliente ?? 'Cliente asignado',
+                                style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black),
+                              ),
+                            ),
+                            const Divider(height: 32),
+                            Row(
+                              children: [
+                                const Icon(Icons.my_location, color: Colors.green, size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _solicitudAsignada!.origen ?? 'Origen desconocido',
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on, color: Colors.red, size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _solicitudAsignada!.destino ?? 'Destino desconocido',
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  if (_solicitudAsignada != null) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => DriverNavigationScreen(
+                                          solicitud: _solicitudAsignada,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFF8A00),
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Ver Viaje',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -346,7 +522,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
+                              color: Colors.black.withValues(alpha: 0.06),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),

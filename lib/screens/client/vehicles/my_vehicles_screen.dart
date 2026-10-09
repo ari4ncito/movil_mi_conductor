@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '/models/vehicle.dart';
 import '../../../../services/auth_service.dart';
 import '../../../../services/vehiculo_service.dart';
 import 'add_vehicle_screen.dart';
@@ -15,6 +14,7 @@ class MyVehiclesScreen extends StatefulWidget {
 class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 	List<dynamic> _vehicles = [];
 	bool _isLoading = true;
+	// ignore: unused_field
 	String? _clienteId;
 
 	@override
@@ -64,7 +64,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 				context: context,
 				builder: (ctx) => AlertDialog(
 					title: const Text('Eliminar Vehículo'),
-					content: const Text('¿Estás seguro de que deseas eliminar este vehículo de tu cuenta? Esta acción no se puede deshacer.'),
+					content: const Text('¿Estás seguro de que deseas eliminar este vehículo de tu cuenta? Está acción no se puede deshacer.'),
 					actions: [
 						TextButton(
 							onPressed: () => Navigator.pop(ctx, false),
@@ -164,7 +164,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 					Icon(
 						Icons.directions_car_outlined,
 						size: 64,
-						color: const Color(0xFF12566B).withOpacity(0.45),
+						color: const Color(0xFF12566B).withValues(alpha: 0.45),
 					),
 					const SizedBox(height: 12),
 					const Text(

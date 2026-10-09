@@ -163,7 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF12566B).withOpacity(0.1),
+                      color: const Color(0xFF12566B).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -219,7 +219,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // TIPO DE DOCUMENTO
                 DropdownButtonFormField<String>(
-                  value: _tipoDocumento,
+                  initialValue: _tipoDocumento,
                   isDense: true,
                   hint: const Text(
                     'Selecciona una opción',

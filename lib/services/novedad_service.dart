@@ -7,26 +7,32 @@ class NovedadService {
   NovedadService({ApiHttpClient? client}) : client = client ?? ApiHttpClient();
 
   Future<List<Novedad>> listar() async =>
-      _list(await client.get('/api/novedades/'));
+      _list(await client.get('/novedades/'));
 
   Future<List<Novedad>> obtenerNovedades() => listar();
 
   Future<Novedad> obtenerPorId(String id) async =>
-      _one(await client.get('/api/novedades/$id'));
+      _one(await client.get('/novedades/$id'));
 
   Future<Novedad> obtenerNovedadPorId(String id) => obtenerPorId(id);
 
   Future<List<Novedad>> listarPorSolicitud(String id) async =>
-      _list(await client.get('/api/novedades/solicitud/$id'));
+      _list(await client.get('/novedades/solicitud/$id'));
 
   Future<List<Novedad>> obtenerNovedadesPorSolicitud(String id) =>
       listarPorSolicitud(id);
 
   Future<List<Novedad>> listarPorConductor(String id) async =>
-      _list(await client.get('/api/novedades/conductor/$id'));
+      _list(await client.get('/novedades/conductor/$id'));
 
   Future<List<Novedad>> obtenerNovedadesPorConductor(String id) =>
       listarPorConductor(id);
+
+  Future<List<Novedad>> listarPorCliente(String id) async =>
+      _list(await client.get('/novedades/cliente/$id'));
+
+  Future<List<Novedad>> obtenerNovedadesPorCliente(String id) =>
+      listarPorCliente(id);
 
   Future<Novedad> crearNovedad(Novedad novedad) async {
     if (novedad.usuarioRegistroId == null ||
@@ -35,24 +41,24 @@ class NovedadService {
         'No se puede crear la novedad: falta el ID del usuario que la registra.',
       );
     }
-    return _one(await client.post('/api/novedades/', body: novedad.toJson()));
+    return _one(await client.post('/novedades/', body: novedad.toJson()));
   }
 
   Future<Novedad> actualizarEstado(String id, String estado) async => _one(
-    await client.patch('/api/novedades/$id/estado', body: {'estado': estado}),
+    await client.patch('/novedades/$id/estado', body: {'estado': estado}),
   );
 
   Future<Novedad> cambiarEstadoNovedad(String id, String estado) =>
       actualizarEstado(id, estado);
 
   Future<Novedad> actualizar(String id, Novedad novedad) async =>
-      _one(await client.put('/api/novedades/$id', body: novedad.toJson()));
+      _one(await client.put('/novedades/$id', body: novedad.toJson()));
 
   Future<Novedad> actualizarNovedad(String id, Novedad novedad) =>
       actualizar(id, novedad);
 
   Future<void> eliminar(String id) async {
-    await client.delete('/api/novedades/$id');
+    await client.delete('/novedades/$id');
   }
 
   Future<void> eliminarNovedad(String id) => eliminar(id);

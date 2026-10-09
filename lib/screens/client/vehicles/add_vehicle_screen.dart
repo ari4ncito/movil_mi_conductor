@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 
-import '/models/vehicle.dart';
 import '/widgets/custom_text_field.dart';
 import '../../../../services/auth_service.dart';
 import '../../../../services/cliente_service.dart';
@@ -296,7 +295,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   BoxShadow(
                     color: AppColors
                         .accentOrange
-                        .withOpacity(0.18),
+                        .withValues(alpha: 0.18),
 
                     blurRadius: 10,
 
@@ -308,7 +307,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   BoxShadow(
                     color: AppColors
                         .petrolDark
-                        .withOpacity(0.04),
+                        .withValues(alpha: 0.04),
 
                     blurRadius: 8,
 
@@ -446,7 +445,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     required ValueChanged<String?> onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
 
       icon: const Icon(
         Icons.keyboard_arrow_down_rounded,
@@ -636,7 +635,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           Switch(
             value: value,
 
-            activeColor:
+            activeThumbColor:
                 AppColors
                     .accentOrange,
 
@@ -691,7 +690,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           BoxShadow(
             color: AppColors
                 .petrolDark
-                .withOpacity(0.04),
+                .withValues(alpha: 0.04),
 
             blurRadius: 8,
 
@@ -1004,7 +1003,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       BoxShadow(
                         color: AppColors
                             .petrolDark
-                            .withOpacity(
+                            .withValues(alpha: 
                                 0.06),
 
                         blurRadius: 12,
@@ -1272,7 +1271,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       BoxShadow(
                         color: AppColors
                             .petrolDark
-                            .withOpacity(
+                            .withValues(alpha: 
                                 0.06),
 
                         blurRadius: 12,
@@ -1660,7 +1659,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         BoxShadow(
                           color: AppColors
                               .petrolDark
-                              .withOpacity(
+                              .withValues(alpha: 
                                   0.3),
 
                           blurRadius: 14,

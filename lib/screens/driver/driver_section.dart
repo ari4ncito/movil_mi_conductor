@@ -122,10 +122,10 @@ class _DriverSectionState extends State<DriverSection> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
+              color: Colors.white.withValues(alpha: 0.12),
               shape: BoxShape.circle,
               border: Border.all(
-                color: Colors.white.withOpacity(0.25),
+                color: Colors.white.withValues(alpha: 0.25),
                 width: 1,
               ),
             ),
@@ -156,7 +156,7 @@ class _DriverSectionState extends State<DriverSection> {
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w400,
-                    color: Colors.white.withOpacity(0.75),
+                    color: Colors.white.withValues(alpha: 0.75),
                   ),
                 ),
               ],
@@ -192,7 +192,7 @@ class _DriverSectionState extends State<DriverSection> {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textPrimary.withOpacity(0.08),
+            color: AppColors.textPrimary.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, -6),
           ),
@@ -247,7 +247,7 @@ class _NavButton extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
-      splashColor: AppColors.petrolLight.withOpacity(0.15),
+      splashColor: AppColors.petrolLight.withValues(alpha: 0.15),
       highlightColor: Colors.transparent,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 260),
@@ -278,7 +278,7 @@ class _NavButton extends StatelessWidget {
                 boxShadow: selected
                     ? [
                         BoxShadow(
-                          color: AppColors.petrolBase.withOpacity(0.35),
+                          color: AppColors.petrolBase.withValues(alpha: 0.35),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -409,28 +409,17 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 24),
-
-              const Text(
-                'Tu perfil',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-
-              const SizedBox(height: 32),
+              const SizedBox(height: 12),
 
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
                 decoration: BoxDecoration(
                   color: AppColors.white,
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.textPrimary.withOpacity(0.06),
+                      color: AppColors.textPrimary.withValues(alpha: 0.06),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -504,7 +493,7 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.textPrimary.withOpacity(0.06),
+                        color: AppColors.textPrimary.withValues(alpha: 0.06),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -580,7 +569,7 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.textPrimary.withOpacity(0.06),
+                      color: AppColors.textPrimary.withValues(alpha: 0.06),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -821,7 +810,7 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                 border: Border.all(color: AppColors.borderGray),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.textPrimary.withOpacity(0.04),
+                    color: AppColors.textPrimary.withValues(alpha: 0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -907,7 +896,7 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                 child: const Text('Cerrar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
-            SafeArea(child: const SizedBox(height: 16)),
+            const SafeArea(child: SizedBox(height: 16)),
           ],
         ),
       ),

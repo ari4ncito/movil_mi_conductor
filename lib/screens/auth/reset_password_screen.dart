@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '/widgets/custom_text_field.dart';
 import '../../services/auth_service.dart';
@@ -28,6 +28,8 @@ class _ResetPasswordScreenState
 
   bool _isLoading = false;
   bool _passwordUpdated = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
@@ -67,7 +69,7 @@ class _ResetPasswordScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Las contraseñas no coinciden.',
+            'Las contraseña no coinciden.',
           ),
         ),
       );
@@ -174,8 +176,13 @@ class _ResetPasswordScreenState
                     labelText: 'NUEVA CONTRASEÑA',
                     hintText: 'Mínimo 6 caracteres',
                     prefixIcon: Icons.lock_outlined,
-                    suffixIcon: Icons.visibility_off_outlined,
-                    obscureText: true,
+                    suffixIcon: _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    obscureText: _obscurePassword,
+                    onSuffixIconTap: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
                     controller: _passwordController,
                   ),
 
@@ -185,8 +192,13 @@ class _ResetPasswordScreenState
                     labelText: 'CONFIRMAR CONTRASEÑA',
                     hintText: 'Repite tu contraseña',
                     prefixIcon: Icons.lock_outlined,
-                    suffixIcon: Icons.visibility_off_outlined,
-                    obscureText: true,
+                    suffixIcon: _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    obscureText: _obscureConfirmPassword,
+                    onSuffixIconTap: () {
+                      setState(() {
+                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                      });
+                    },
                     controller:
                         _confirmarPasswordController,
                   ),

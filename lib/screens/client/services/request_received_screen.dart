@@ -57,7 +57,7 @@ class RequestReceivedScreen extends StatelessWidget {
                   border: Border.all(color: AppColors.borderGray, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withOpacity(0.1),
+                      color: AppColors.petrolDark.withValues(alpha: 0.1),
                       blurRadius: 20,
                       offset: const Offset(0, 4),
                     ),
@@ -81,7 +81,7 @@ class RequestReceivedScreen extends StatelessWidget {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.petrolDark.withOpacity(0.3),
+                              color: AppColors.petrolDark.withValues(alpha: 0.3),
                               blurRadius: 14,
                               offset: const Offset(0, 6),
                             ),
@@ -161,7 +161,7 @@ class RequestReceivedScreen extends StatelessWidget {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.petrolDark.withOpacity(0.3),
+                                color: AppColors.petrolDark.withValues(alpha: 0.3),
                                 blurRadius: 14,
                                 offset: const Offset(0, 6),
                               ),
@@ -228,7 +228,7 @@ class RequestReceivedScreen extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color?.withOpacity(0.15) ?? AppColors.borderGray,
+              color: color?.withValues(alpha: 0.15) ?? AppColors.borderGray,
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -244,7 +244,7 @@ class RequestReceivedScreen extends StatelessWidget {
               children: [
                 Text(
                   label1,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.slateGray,
                     fontWeight: FontWeight.w600,
@@ -299,7 +299,7 @@ class RequestReceivedScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             label1,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 10,
               color: AppColors.slateGray,
               fontWeight: FontWeight.w600,

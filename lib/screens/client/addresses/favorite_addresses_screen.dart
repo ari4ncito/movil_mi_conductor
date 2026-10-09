@@ -28,7 +28,7 @@ class FavoriteAddressesScreen extends StatelessWidget {
         backgroundColor: AppColors.white,
         elevation: 0,
         title: const Text(
-          'Direcciones Favoritas',
+          'Direcciónes Favoritas',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -72,7 +72,7 @@ class FavoriteAddressesScreen extends StatelessWidget {
                   onPressed: () {},
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.petrolDark,
-                    backgroundColor: AppColors.petrolDark.withOpacity(0.04),
+                    backgroundColor: AppColors.petrolDark.withValues(alpha: 0.04),
                     side: const BorderSide(color: AppColors.petrolDark, width: 1.5),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -110,7 +110,7 @@ class FavoriteAddressesScreen extends StatelessWidget {
         border: Border.all(color: AppColors.borderGray, width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppColors.petrolDark.withOpacity(0.06),
+            color: AppColors.petrolDark.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -122,7 +122,7 @@ class FavoriteAddressesScreen extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppColors.accentOrange.withOpacity(0.12),
+              color: AppColors.accentOrange.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -147,7 +147,7 @@ class FavoriteAddressesScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   address,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.slateGray,
                   ),
@@ -160,11 +160,11 @@ class FavoriteAddressesScreen extends StatelessWidget {
           Container(
             width: 32,
             height: 32,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.background,
               shape: BoxShape.circle,
             ),
-            child: Icon(
+            child: const Icon(
               Icons.edit,
               color: AppColors.slateGray,
               size: 16,

@@ -196,7 +196,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -213,7 +213,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -436,7 +436,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                 child: const Text('Cerrar Detalles', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
-            SafeArea(child: const SizedBox(height: 16)),
+            const SafeArea(child: SizedBox(height: 16)),
           ],
         ),
       ),
@@ -460,7 +460,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -489,12 +489,12 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                     color: const Color(0xFFF0F5F7),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.remove_red_eye_outlined, size: 16, color: Color(0xFF12566B)),
-                      const SizedBox(width: 4),
-                      const Text(
+                      Icon(Icons.remove_red_eye_outlined, size: 16, color: Color(0xFF12566B)),
+                      SizedBox(width: 4),
+                      Text(
                         'Ver detalles',
                         style: TextStyle(
                           fontSize: 12,
@@ -516,7 +516,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   Container(
                     width: 12,
                     height: 12,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.green,
                       shape: BoxShape.circle,
                     ),
@@ -525,8 +525,8 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   Container(
                     width: 12,
                     height: 12,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF8A00),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF8A00),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -562,8 +562,8 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   Container(
                     width: 40,
                     height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F7FA),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF5F7FA),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.person, color: Colors.black),

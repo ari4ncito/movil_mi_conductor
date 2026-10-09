@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'client_driver_tracking_screen.dart';
 import '../../../models/solicitud.dart';
+import '../../../services/solicitud_service.dart';
+import 'dart:async';
 
 // ─────────────────────────────────────────────
 // Paleta de la app: azul petróleo, escalas de azul oscuro,
@@ -18,6 +20,7 @@ class AppColors {
   static const Color accentOrange = Color(0xFFE8821E);
   static const Color white = Colors.white;
   static const Color danger = Color(0xFFC0392B);
+  static const Color success = Color(0xFF2E7D5B);
 }
 
 class SearchingDriverScreen extends StatefulWidget {
@@ -34,6 +37,8 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
+  Timer? _pollingTimer;
+  final SolicitudService _solicitudService = SolicitudService();
 
   @override
   void initState() {
@@ -50,10 +55,37 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen>
     _opacityAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
+
+    if (widget.solicitud?.id != null) {
+      _startPolling();
+    }
+  }
+
+  void _startPolling() {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      try {
+        final updated = await _solicitudService.obtenerSolicitudPorId(widget.solicitud!.id!);
+        if (updated.conductorId != null || 
+            ['Aceptada', 'Aceptado', 'Asignada', 'Asignado', 'En camino'].contains(updated.estado)) {
+          timer.cancel();
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ClientDriverTrackingScreen(solicitud: updated),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Error al consultar estado de solicitud: $e');
+      }
+    });
   }
 
   @override
   void dispose() {
+    _pollingTimer?.cancel();
     _animationController.dispose();
     super.dispose();
   }
@@ -91,7 +123,7 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.petrolDark.withOpacity(0.12),
+                          color: AppColors.petrolDark.withValues(alpha: 0.12),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -120,7 +152,7 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.petrolDark.withOpacity(0.12),
+                          color: AppColors.petrolDark.withAlpha(30),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -151,8 +183,8 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen>
                       width: 80 * _scaleAnimation.value,
                       height: 80 * _scaleAnimation.value,
                       decoration: BoxDecoration(
-                        color: AppColors.petrolBase.withOpacity(
-                          _opacityAnimation.value * 0.6,
+                        color: AppColors.petrolBase.withAlpha(
+                          (_opacityAnimation.value * 255).round(),
                         ),
                         shape: BoxShape.circle,
                       ),
@@ -169,7 +201,7 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen>
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.petrolBase.withOpacity(0.5),
+                            color: AppColors.petrolBase.withAlpha(127),
                             blurRadius: 14,
                             spreadRadius: 2,
                           ),
@@ -198,7 +230,7 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen>
                 border: Border.all(color: AppColors.borderGray, width: 1),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.petrolDark.withOpacity(0.12),
+                    color: AppColors.petrolDark.withAlpha(30),
                     blurRadius: 20,
                     offset: const Offset(0, -4),
                   ),
@@ -211,7 +243,7 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen>
                   children: [
                     // Título
                     const Text(
-                      'Buscando tu conductor...',
+                      'Asignando conductor...',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -220,7 +252,7 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen>
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Estamos encontrando el mejor conductor para ti',
+                      'Esperando a que un conductor acepte tu viaje',
                       style: TextStyle(
                         fontSize: 14,
                         color: AppColors.slateGray,
@@ -228,39 +260,22 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen>
                     ),
                     const SizedBox(height: 24),
 
-                    // Barra de progreso
+                    // Barra de progreso infinita
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: SizedBox(
+                      child: const SizedBox(
                         height: 8,
-                        child: TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0.0, end: 1.0),
-                          duration: const Duration(seconds: 3),
-                          builder: (context, value, child) {
-                            return LinearProgressIndicator(
-                              value: value,
-                              backgroundColor: AppColors.borderGray,
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                AppColors.accentOrange,
-                              ),
-                            );
-                          },
-                          onEnd: () {
-                            // Navegar a la pantalla de seguimiento después de encontrar el conductor
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const ClientDriverTrackingScreen(),
-                              ),
-                            );
-                          },
+                        child: LinearProgressIndicator(
+                          backgroundColor: AppColors.borderGray,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.accentOrange,
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 24),
 
-                    // Información del vehículo
+                    // Información del viaje
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -274,43 +289,53 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen>
                           width: 1,
                         ),
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: AppColors.accentOrange.withOpacity(0.12),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.directions_car_outlined,
-                              color: AppColors.accentOrange,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Sedán Lujo',
-                                  style: TextStyle(
-                                    fontSize: 16,
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on, color: AppColors.success, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  widget.solicitud?.origen ?? 'Punto de origen',
+                                  style: const TextStyle(
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.textPrimary,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                Text(
-                                  'Servicio premium',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.slateGray,
-                                  ),
-                                ),
-                              ],
+                              ),
+                            ],
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(left: 9.0, top: 4, bottom: 4),
+                            child: SizedBox(
+                              height: 12,
+                              child: VerticalDivider(
+                                color: AppColors.borderGray,
+                                thickness: 2,
+                                width: 2,
+                              ),
                             ),
+                          ),
+                          Row(
+                            children: [
+                              const Icon(Icons.flag, color: AppColors.accentOrange, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  widget.solicitud?.destino ?? 'Punto de destino',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -348,7 +373,7 @@ class MapBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.petrolBase.withOpacity(0.08)
+      ..color = AppColors.petrolBase.withAlpha(20)
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
@@ -364,7 +389,7 @@ class MapBackgroundPainter extends CustomPainter {
 
     // Dibujar algunas líneas diagonales para dar aspecto de mapa
     final diagonalPaint = Paint()
-      ..color = AppColors.petrolBase.withOpacity(0.12)
+      ..color = AppColors.petrolBase.withAlpha(30)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 

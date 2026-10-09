@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/novedad.dart';
 import '../../services/http_client.dart';
 import '../../services/novedad_service.dart';
+import '../../services/auth_service.dart';
 
 class NotificationsScreen extends StatefulWidget {
   final NovedadService? novedadService;
@@ -31,7 +32,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       _error = null;
     });
     try {
-      _novedades = await _service.listar();
+      final id = await AuthService.obtenerUsuarioId();
+      final user = await AuthService.obtenerUsuario();
+      
+      if (id != null && user != null) {
+        final rol = user['rol']?.toString().toUpperCase() ?? '';
+        if (rol == 'CONDUCTOR') {
+          _novedades = await _service.listarPorConductor(id);
+        } else {
+          _novedades = await _service.listarPorCliente(id);
+        }
+      } else {
+        _novedades = await _service.listar();
+      }
     } on ApiException catch (error) {
       _error = error.message;
     } catch (_) {
@@ -55,7 +68,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
               // Header
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   GestureDetector(
                     onTap: () {
@@ -69,7 +82,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -77,81 +90,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                       child: const Icon(
                         Icons.arrow_back_ios_rounded,
-                        color: Color(0xFFFF8A00),
+                        color: Color(0xFF19535F),
                         size: 20,
                       ),
                     ),
                   ),
+                  const SizedBox(width: 16),
                   const Text(
-                    'AYUDA',
+                    'Notificaciones',
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFFF8A00),
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.person_outline,
-                      color: Colors.black,
-                      size: 24,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF19535F),
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 32),
-
-              // Notificaciones title
-              const Text(
-                'Notificaciones',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Mark all read
-              GestureDetector(
-                onTap: () {},
-                child: const Row(
-                  children: [
-                    Icon(
-                      Icons.done_all_outlined,
-                      color: Color(0xFFFF8A00),
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'MARCAR TODO COMO LEÍDO',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFFF8A00),
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
 
               if (_isLoading)
                 const Center(
@@ -257,7 +213,7 @@ class _NotificationCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -270,7 +226,7 @@ class _NotificationCard extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.15),
+              color: iconColor.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: iconColor, size: 28),

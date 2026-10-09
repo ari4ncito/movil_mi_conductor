@@ -271,7 +271,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       );
 
       if (!mounted) return;
-      Navigator.of(context).push(
+      Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => SearchingDriverScreen(solicitud: solicitud),
         ),
@@ -356,7 +356,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       child: Divider(
         height: 1,
         thickness: 1,
-        color: AppColors.border.withOpacity(0.8),
+        color: AppColors.border.withValues(alpha: 0.8),
       ),
     );
   }
@@ -367,7 +367,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.petrolPale.withOpacity(0.6),
+          color: AppColors.petrolPale.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
@@ -442,7 +442,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withOpacity(0.35),
+                      color: AppColors.petrolDark.withValues(alpha: 0.35),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -454,10 +454,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       width: 52,
                       height: 52,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
+                        color: Colors.white.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.25),
+                          color: Colors.white.withValues(alpha: 0.25),
                         ),
                       ),
                       child: const Icon(
@@ -497,7 +497,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
+                        color: Colors.white.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -597,7 +597,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                   border: Border.all(color: AppColors.border),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withOpacity(0.07),
+                      color: AppColors.petrolDark.withValues(alpha: 0.07),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -734,7 +734,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           DropdownButtonFormField<Vehicle>(
-                            value: _selectedVehicle,
+                            initialValue: _selectedVehicle,
                             style: const TextStyle(color: AppColors.textPrimary),
                             dropdownColor: AppColors.cardBackground,
                             icon: const Icon(
@@ -860,7 +860,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.accent.withOpacity(0.35),
+                              color: AppColors.accent.withValues(alpha: 0.35),
                               blurRadius: 16,
                               offset: const Offset(0, 8),
                             ),
