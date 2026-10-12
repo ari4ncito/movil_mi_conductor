@@ -197,11 +197,22 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 					style: const TextStyle(fontWeight: FontWeight.w700),
 				),
 				subtitle: Text('${vehicle['placa'] ?? ''} · ${vehicle['color'] ?? ''} · ${vehicle['modelo'] ?? ''}'),
-				trailing: IconButton(
-					tooltip: 'Eliminar vehículo',
-					onPressed: () => _removeVehicle(vehicle),
-					icon: const Icon(Icons.delete_outline_rounded),
-					color: const Color(0xFFE8821E),
+				trailing: Row(
+					mainAxisSize: MainAxisSize.min,
+					children: [
+						IconButton(
+							tooltip: 'Editar vehículo',
+							onPressed: () => _editVehicle(vehicle),
+							icon: const Icon(Icons.edit_outlined),
+							color: const Color(0xFF12566B),
+						),
+						IconButton(
+							tooltip: 'Eliminar vehículo',
+							onPressed: () => _removeVehicle(vehicle),
+							icon: const Icon(Icons.delete_outline_rounded),
+							color: const Color(0xFFE8821E),
+						),
+					],
 				),
 			),
 		));

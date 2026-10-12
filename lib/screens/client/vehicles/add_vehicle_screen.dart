@@ -64,7 +64,30 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       _platesController.text = v['placa'] ?? '';
       _colorController.text = v['color'] ?? '';
       _yearController.text = v['anio']?.toString() ?? '';
-      _vehicleType = v['tipoVehiculo'];
+
+      const validTypes = [
+        'Automóvil',
+        'Sedán',
+        'SUV',
+        'Camioneta',
+        'Hatchback',
+        'Pickup',
+        'Van',
+        'Moto',
+        'Otro'
+      ];
+      final rawType = v['tipoVehiculo']?.toString();
+      if (rawType != null) {
+        try {
+          _vehicleType = validTypes.firstWhere(
+            (t) => t.toLowerCase() == rawType.toLowerCase(),
+          );
+        } catch (_) {
+          _vehicleType = 'Automóvil';
+        }
+      } else {
+        _vehicleType = 'Automóvil';
+      }
 
       // Cargar fecha SOAT
       if (v['fechaVencimientoSoat'] != null) {
@@ -186,9 +209,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final isEditing = widget.vehicleToEdit != null;
 
-    // Validación de fecha SOAT
-    if (_fechaVencimientoSoat != null && _fechaVencimientoSoat!.isBefore(today)) {
+    // Validación de fecha SOAT (solo para nuevos registros si la fecha es pasada)
+    if (!isEditing && _fechaVencimientoSoat != null && _fechaVencimientoSoat!.isBefore(today)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: AppColors.danger,
@@ -198,8 +222,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       return;
     }
 
-    // Validación de fecha Tecnomecánica
-    if (_fechaVencimientoTecnomecanica != null && _fechaVencimientoTecnomecanica!.isBefore(today)) {
+    // Validación de fecha Tecnomecánica (solo para nuevos registros si la fecha es pasada)
+    if (!isEditing && _fechaVencimientoTecnomecanica != null && _fechaVencimientoTecnomecanica!.isBefore(today)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: AppColors.danger,
@@ -215,8 +239,20 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       final usuarioId = await AuthService.obtenerUsuarioId();
       if (usuarioId == null) throw Exception('No hay usuario activo en sesión.');
 
-      final vehiculoData = {
-        'cliente': widget.vehicleToEdit?['cliente']?['_id'] ?? widget.vehicleToEdit?['cliente'] ?? usuarioId,
+      // Extracción segura del clienteId
+      String? clienteId;
+      if (isEditing) {
+        final c = widget.vehicleToEdit['cliente'];
+        if (c is Map) {
+          clienteId = (c['_id'] ?? c['id'])?.toString();
+        } else if (c != null) {
+          clienteId = c.toString();
+        }
+      }
+      clienteId ??= usuarioId;
+
+      final vehiculoData = <String, dynamic>{
+        'cliente': clienteId,
         'marca': _brandController.text.trim(),
         'modelo': _modelController.text.trim().isEmpty ? _brandController.text.trim() : _modelController.text.trim(),
         'placa': _platesController.text.trim().toUpperCase(),
@@ -229,16 +265,24 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           'fechaVencimientoTecnomecanica': _fechaVencimientoTecnomecanica!.toIso8601String(),
           'fechaRevisionTecnicoMecanica': _fechaVencimientoTecnomecanica!.toIso8601String(),
         },
-        'numeroPuertas': 4,
-        'numeroChasis': widget.vehicleToEdit?['numeroChasis'] ?? '00000',
+        'numeroPuertas': widget.vehicleToEdit?['numeroPuertas'] ?? 4,
         'tipoCombustible': widget.vehicleToEdit?['tipoCombustible'] ?? 'Gasolina',
         'estadoSeguro': widget.vehicleToEdit?['estadoSeguro'] ?? 'Activo',
         'companiaAseguradora': widget.vehicleToEdit?['companiaAseguradora'] ?? 'N/A',
         'estado': true,
       };
 
-      if (widget.vehicleToEdit != null) {
-        final id = widget.vehicleToEdit['_id'] ?? widget.vehicleToEdit['id'];
+      // Si existe un número de chasis real en el vehículo a editar, preservarlo
+      final chasisExistente = widget.vehicleToEdit?['numeroChasis']?.toString();
+      if (chasisExistente != null && chasisExistente.isNotEmpty && chasisExistente != '00000') {
+        vehiculoData['numeroChasis'] = chasisExistente;
+      }
+
+      if (isEditing) {
+        final id = (widget.vehicleToEdit['_id'] ?? widget.vehicleToEdit['id'])?.toString();
+        if (id == null || id.isEmpty) {
+          throw Exception('No se encontró el identificador del vehículo a editar.');
+        }
         await VehiculoService.update(id, vehiculoData);
       } else {
         await VehiculoService.crear(vehiculoData);
@@ -248,7 +292,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFF16A34A),
-            content: Text(widget.vehicleToEdit != null
+            content: Text(isEditing
                 ? 'Vehículo actualizado exitosamente.'
                 : 'Vehículo registrado exitosamente.'),
           ),
