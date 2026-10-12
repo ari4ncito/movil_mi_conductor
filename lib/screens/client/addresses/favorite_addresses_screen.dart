@@ -72,7 +72,7 @@ class FavoriteAddressesScreen extends StatelessWidget {
                   onPressed: () {},
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.petrolDark,
-                    backgroundColor: AppColors.petrolDark.withValues(alpha: 0.04),
+                    backgroundColor: AppColors.petrolDark.withOpacity(0.04),
                     side: const BorderSide(color: AppColors.petrolDark, width: 1.5),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -110,7 +110,7 @@ class FavoriteAddressesScreen extends StatelessWidget {
         border: Border.all(color: AppColors.borderGray, width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppColors.petrolDark.withValues(alpha: 0.06),
+            color: AppColors.petrolDark.withOpacity(0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -122,7 +122,7 @@ class FavoriteAddressesScreen extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppColors.accentOrange.withValues(alpha: 0.12),
+              color: AppColors.accentOrange.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(

@@ -123,7 +123,7 @@ class _SearchingDriverScreenState extends State<SearchingDriverScreen>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.petrolDark.withValues(alpha: 0.12),
+                          color: AppColors.petrolDark.withOpacity(0.12),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),

@@ -172,6 +172,20 @@ class AuthService {
   }
 
   // =========================
+  // GUARDAR USUARIO
+  // =========================
+
+  static Future<void> guardarUsuario(
+    Map<String, dynamic> usuario,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'usuario',
+      jsonEncode(usuario),
+    );
+  }
+
+  // =========================
   // OBTENER TOKEN
   // =========================
 

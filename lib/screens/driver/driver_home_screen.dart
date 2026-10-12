@@ -296,7 +296,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
+                            color: Colors.black.withOpacity(0.06),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -332,7 +332,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                             onChanged: _isUpdatingAvailability
                                 ? null
                                 : _cambiarDisponibilidad,
-                            activeThumbColor: const Color(0xFFFF8A00),
+                            activeColor: const Color(0xFFFF8A00),
                             inactiveThumbColor: Colors.grey[400],
                           ),
                         ],
@@ -353,7 +353,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
+                              color: Colors.black.withOpacity(0.06),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -522,7 +522,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
+                              color: Colors.black.withOpacity(0.06),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
