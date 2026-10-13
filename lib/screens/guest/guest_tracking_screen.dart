@@ -59,7 +59,7 @@ class GuestTrackingScreen extends StatelessWidget {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
+                              color: Colors.black.withOpacity(0.15),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -80,7 +80,7 @@ class GuestTrackingScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(30),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
+                              color: Colors.black.withOpacity(0.15),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -115,7 +115,7 @@ class GuestTrackingScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(32),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
+                          color: Colors.black.withOpacity(0.2),
                           blurRadius: 20,
                           offset: const Offset(0, -4),
                         ),

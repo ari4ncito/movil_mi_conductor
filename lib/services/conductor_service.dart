@@ -79,4 +79,42 @@ class ConductorService {
       data['message'] ?? 'No se pudo actualizar la disponibilidad.',
     );
   }
+
+  // =========================
+  // ACTUALIZAR CONDUCTOR
+  // =========================
+
+  static Future<Map<String, dynamic>> actualizar(
+    String conductorId,
+    Map<String, dynamic> datos,
+  ) async {
+    final token = await AuthService.obtenerToken();
+
+    final response = await http.put(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/conductores/$conductorId',
+      ),
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty)
+          'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(datos),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200 && data['success'] == true) {
+      final resultado = data['data'];
+
+      if (resultado is Map<String, dynamic>) {
+        return resultado;
+      }
+      return {};
+    }
+
+    throw Exception(
+      data['message'] ?? 'No se pudo actualizar el conductor.',
+    );
+  }
 }

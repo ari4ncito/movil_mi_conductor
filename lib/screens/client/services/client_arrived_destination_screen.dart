@@ -50,7 +50,7 @@ class _ClientArrivedDestinationScreenState
                   border: Border.all(color: AppColors.borderGray, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withValues(alpha: 0.08),
+                      color: AppColors.petrolDark.withOpacity(0.08),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -86,7 +86,7 @@ class _ClientArrivedDestinationScreenState
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withValues(alpha: 0.25),
+                      color: AppColors.petrolDark.withOpacity(0.25),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -191,7 +191,7 @@ class _ClientArrivedDestinationScreenState
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.petrolDark.withValues(alpha: 0.3),
+                        color: AppColors.petrolDark.withOpacity(0.3),
                         blurRadius: 14,
                         offset: const Offset(0, 6),
                       ),
@@ -318,7 +318,7 @@ class _ClientArrivedDestinationScreenState
         border: Border.all(color: AppColors.borderGray, width: 1),
         boxShadow: [
           BoxShadow(
-            color: AppColors.petrolDark.withValues(alpha: 0.08),
+            color: AppColors.petrolDark.withOpacity(0.08),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -330,7 +330,7 @@ class _ClientArrivedDestinationScreenState
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppColors.accentOrange.withValues(alpha: 0.12),
+              color: AppColors.accentOrange.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(

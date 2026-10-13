@@ -164,7 +164,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 					Icon(
 						Icons.directions_car_outlined,
 						size: 64,
-						color: const Color(0xFF12566B).withValues(alpha: 0.45),
+						color: const Color(0xFF12566B).withOpacity(0.45),
 					),
 					const SizedBox(height: 12),
 					const Text(
@@ -197,11 +197,22 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 					style: const TextStyle(fontWeight: FontWeight.w700),
 				),
 				subtitle: Text('${vehicle['placa'] ?? ''} · ${vehicle['color'] ?? ''} · ${vehicle['modelo'] ?? ''}'),
-				trailing: IconButton(
-					tooltip: 'Eliminar vehículo',
-					onPressed: () => _removeVehicle(vehicle),
-					icon: const Icon(Icons.delete_outline_rounded),
-					color: const Color(0xFFE8821E),
+				trailing: Row(
+					mainAxisSize: MainAxisSize.min,
+					children: [
+						IconButton(
+							tooltip: 'Editar vehículo',
+							onPressed: () => _editVehicle(vehicle),
+							icon: const Icon(Icons.edit_outlined),
+							color: const Color(0xFF12566B),
+						),
+						IconButton(
+							tooltip: 'Eliminar vehículo',
+							onPressed: () => _removeVehicle(vehicle),
+							icon: const Icon(Icons.delete_outline_rounded),
+							color: const Color(0xFFE8821E),
+						),
+					],
 				),
 			),
 		));
@@ -240,10 +251,9 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 								_detailRow('Placa', vehicle['placa'] ?? ''),
 								_detailRow('Año', vehicle['anio']?.toString() ?? ''),
 								_detailRow('Color', vehicle['color'] ?? ''),
-								_detailRow('Combustible', vehicle['tipoCombustible'] ?? ''),
-								_detailRow('Chasis/VIN', vehicle['numeroChasis'] ?? ''),
-								_detailRow('Aseguradora', vehicle['companiaAseguradora'] ?? ''),
-								_detailRow('Estado Seguro', vehicle['estadoSeguro'] ?? ''),
+								_detailRow('Tipo', vehicle['tipoVehiculo'] ?? 'Automóvil'),
+								_detailRow('Vencimiento SOAT', _formatDate(vehicle['fechaVencimientoSoat'])),
+								_detailRow('Vencimiento Tecno', _formatDate(vehicle['fechaVencimientoTecnomecanica'] ?? vehicle['fechaRevisionTecnicoMecanica'])),
 								const SizedBox(height: 24),
 								SizedBox(
 									width: double.infinity,
@@ -268,6 +278,23 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
 				);
 			},
 		);
+	}
+
+	String _formatDate(dynamic dateStr) {
+		if (dateStr == null) return 'No registrada';
+		try {
+			final dt = DateTime.parse(dateStr.toString()).toLocal();
+			final now = DateTime.now();
+			final today = DateTime(now.year, now.month, now.day);
+			final target = DateTime(dt.year, dt.month, dt.day);
+			final formatted = '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+			if (target.isBefore(today)) {
+				return '$formatted (Vencido)';
+			}
+			return formatted;
+		} catch (_) {
+			return dateStr.toString();
+		}
 	}
 
 	Widget _detailRow(String label, String value) {

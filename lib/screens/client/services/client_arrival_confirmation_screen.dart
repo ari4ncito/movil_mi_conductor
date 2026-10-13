@@ -45,7 +45,7 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withValues(alpha: 0.3),
+                      color: AppColors.petrolDark.withOpacity(0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -91,7 +91,7 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                   border: Border.all(color: AppColors.borderGray, width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.petrolDark.withValues(alpha: 0.08),
+                      color: AppColors.petrolDark.withOpacity(0.08),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -135,7 +135,7 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.petrolDark.withValues(alpha: 0.3),
+                        color: AppColors.petrolDark.withOpacity(0.3),
                         blurRadius: 14,
                         offset: const Offset(0, 6),
                       ),
@@ -193,7 +193,7 @@ class ClientArrivalConfirmationScreen extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.accentOrange.withValues(alpha: 0.12),
+                color: AppColors.accentOrange.withOpacity(0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(
