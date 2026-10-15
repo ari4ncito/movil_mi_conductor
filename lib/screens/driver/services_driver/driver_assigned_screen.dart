@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mi_conductor/screens/client/services/client_arrived_destination_screen.dart';
+import 'package:mi_conductor/screens/client/services/client_driver_tracking_screen.dart';
 
 class DriverAssignedScreen extends StatefulWidget {
   const DriverAssignedScreen({super.key});
@@ -12,12 +12,12 @@ class _DriverAssignedScreenState extends State<DriverAssignedScreen> {
   @override
   void initState() {
     super.initState();
-    // Después de 3 segundos, navegamos automáticamente
+    // Después de 3 segundos, navegamos a la pantalla de seguimiento del viaje
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => const ClientArrivedDestinationScreen(),
+            builder: (context) => const ClientDriverTrackingScreen(),
           ),
         );
       }

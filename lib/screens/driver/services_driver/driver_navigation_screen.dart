@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import '../../../models/solicitud.dart';
 import 'driver_arrived_screen.dart';
+import 'driver_vehicle_delivery_verification.dart';
 
 // ─────────────────────────────────────────────
 // Paleta de la app: azul petróleo, escalas de azul oscuro,
@@ -26,8 +27,13 @@ class AppColors {
 
 class DriverNavigationScreen extends StatefulWidget {
   final Solicitud? solicitud;
+  final bool isDrivingToDestination;
 
-  const DriverNavigationScreen({super.key, this.solicitud});
+  const DriverNavigationScreen({
+    super.key,
+    this.solicitud,
+    this.isDrivingToDestination = false,
+  });
 
   @override
   State<DriverNavigationScreen> createState() => _DriverNavigationScreenState();
@@ -219,58 +225,102 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
 
           // Header
           SafeArea(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.petrolDark.withAlpha(30), // fixed withOpacity warning
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.petrolDark.withAlpha(30),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ),
-                  const Text(
-                    'Mi Conductor',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.petrolDark,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.petrolDark.withAlpha(30),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
                         ),
-                      ],
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
-                      onPressed: () {},
-                    ),
+                      ),
+                      const Text(
+                        'Mi Conductor',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.petrolDark,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.petrolDark.withAlpha(30),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
+                          onPressed: () {},
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.fiber_manual_record,
+                        color: widget.isDrivingToDestination
+                            ? const Color(0xFF2E7D5B)
+                            : AppColors.accentOrange,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.isDrivingToDestination
+                            ? 'VIAJE EN PROCESO · EN RUTA AL DESTINO'
+                            : 'EN CAMINO AL PUNTO DE RECOGIDA',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: widget.isDrivingToDestination
+                              ? const Color(0xFF2E7D5B)
+                              : AppColors.accentOrange,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -566,11 +616,24 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
                         ),
                         child: ElevatedButton(
                           onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => DriverArrivedScreen(solicitud: widget.solicitud),
-                              ),
-                            );
+                            if (widget.isDrivingToDestination) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      DriverVehicleDeliveryVerification(
+                                    solicitud: widget.solicitud,
+                                  ),
+                                ),
+                              );
+                            } else {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => DriverArrivedScreen(
+                                    solicitud: widget.solicitud,
+                                  ),
+                                ),
+                              );
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
@@ -582,9 +645,11 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          child: const Text(
-                            'Confirmar Llegada',
-                            style: TextStyle(
+                          child: Text(
+                            widget.isDrivingToDestination
+                                ? 'Llegada a Destino / Entregar Vehículo'
+                                : 'Confirmar Llegada (Punto de Recogida)',
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.3,
@@ -603,4 +668,5 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
     );
   }
 }
-
+
+

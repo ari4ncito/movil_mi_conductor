@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'driver_start_verification_screen.dart';
+import 'driver_vehicle_evidence_screen.dart';
 import '../../../models/solicitud.dart';
 
 // ─────────────────────────────────────────────
@@ -141,7 +141,7 @@ class DriverArrivedScreen extends StatelessWidget {
                     onPressed: () {
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(
-                          builder: (context) => DriverStartVerificationScreen(
+                          builder: (context) => DriverVehicleEvidenceScreen(
                             solicitud: solicitud,
                           ),
                         ),
@@ -158,9 +158,9 @@ class DriverArrivedScreen extends StatelessWidget {
                       ),
                     ),
                     child: const Text(
-                      'Iniciar Viaje',
+                      'Inspeccionar Vehículo e Iniciar',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.3,
                       ),
