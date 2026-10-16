@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/solicitud.dart';
+import '../../services/auth_service.dart';
+import '../../services/conductor_service.dart';
 import '../../services/http_client.dart';
 import '../../services/solicitud_service.dart';
 
@@ -36,7 +38,21 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
       _error = null;
     });
     try {
-      _solicitudes = await _service.listar(conductorId: widget.conductorId);
+      String? condId = widget.conductorId;
+      if (condId == null) {
+        final usuario = await AuthService.obtenerUsuario();
+        final usuarioId = usuario?['_id'] ?? usuario?['id'];
+        if (usuarioId != null) {
+          final conductor = await ConductorService.obtenerPorUsuario(usuarioId.toString());
+          condId = conductor['_id']?.toString() ?? conductor['id']?.toString();
+        }
+      }
+      final all = await _service.listar(conductorId: condId);
+      if (condId != null) {
+        _solicitudes = all.where((s) => s.conductorId == condId).toList();
+      } else {
+        _solicitudes = all;
+      }
     } on ApiException catch (error) {
       _error = error.message;
     } catch (_) {
@@ -138,9 +154,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                       ),
                       pickup: solicitud.origen ?? 'Origen no disponible',
                       destination: solicitud.destino ?? 'Destino no disponible',
-                      driver: solicitud.correoCliente ??
-                          solicitud.clienteId ??
-                          'Cliente',
+                      driver: solicitud.clienteNombre,
                       driverRating: 5.0,
                       status: solicitud.estado,
                     ),

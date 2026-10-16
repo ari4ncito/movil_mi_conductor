@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../models/novedad.dart';
+import '../../../services/auth_service.dart';
 import '../../../services/http_client.dart';
 import '../../../services/novedad_service.dart';
 
@@ -25,7 +28,8 @@ class DriverReportNoveltyScreen extends StatefulWidget {
 class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
   String? _selectedNovelty;
   final TextEditingController _detailsController = TextEditingController();
-  bool _hasPhoto = false;
+  XFile? _photoFile;
+  final ImagePicker _picker = ImagePicker();
   bool _isCreating = false;
   late final NovedadService _novedadService =
       widget.novedadService ?? NovedadService();
@@ -38,36 +42,138 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
     'Otro',
   ];
 
+  static const Map<String, Map<String, String>> _noveltyConfig = {
+    'Tráfico pesado': {
+      'tipo': 'VIAL',
+      'severidad': 'MEDIA',
+      'titulo': 'Tráfico pesado en la ruta',
+      'defaultDesc': 'Tráfico pesado en la vía que genera demoras en el servicio.',
+    },
+    'Accidente en la ruta': {
+      'tipo': 'VIAL',
+      'severidad': 'ALTA',
+      'titulo': 'Accidente vehicular en la vía',
+      'defaultDesc': 'Se presentó un accidente de tránsito en el trayecto de la ruta.',
+    },
+    'Vehículo averiado': {
+      'tipo': 'MECANICA',
+      'severidad': 'ALTA',
+      'titulo': 'Avería mecánica del vehículo',
+      'defaultDesc': 'El vehículo presenta fallas mecánicas imprevistas durante el recorrido.',
+    },
+    'Problema con el cliente': {
+      'tipo': 'CLIENTE',
+      'severidad': 'MEDIA',
+      'titulo': 'Novedad con el cliente',
+      'defaultDesc': 'Se presentó un inconveniente o eventualidad con el cliente asignado.',
+    },
+    'Otro': {
+      'tipo': 'OTROS',
+      'severidad': 'BAJA',
+      'titulo': 'Novedad general en el servicio',
+      'defaultDesc': 'Reporte de novedad imprevista reportada por el conductor.',
+    },
+  };
+
   @override
   void dispose() {
     _detailsController.dispose();
     super.dispose();
   }
 
+  Future<void> _takePhoto() async {
+    try {
+      final XFile? photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+        imageQuality: 85,
+      );
+      if (photo != null) {
+        setState(() {
+          _photoFile = photo;
+        });
+      }
+    } catch (e) {
+      debugPrint('No se pudo acceder a la cámara directa: $e');
+      // Intentar galería como respaldo en caso de emulador o permisos
+      try {
+        final XFile? galleryPhoto = await _picker.pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 85,
+        );
+        if (galleryPhoto != null) {
+          setState(() {
+            _photoFile = galleryPhoto;
+          });
+        }
+      } catch (_) {}
+    }
+  }
+
   Future<void> _createNovedad() async {
-    final usuarioId = widget.usuarioId?.trim();
-    if (usuarioId == null || usuarioId.isEmpty) {
+    final rawUsuarioId = widget.usuarioId?.trim() ??
+        (await AuthService.obtenerUsuarioId())?.trim();
+    if (!mounted) return;
+
+    bool isValidObjectId(String? id) =>
+        id != null && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(id.trim());
+
+    if (rawUsuarioId == null || !isValidObjectId(rawUsuarioId)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'No se puede crear la novedad: falta el ID del usuario que la registra.',
+            'No se puede crear la novedad: falta el ID del usuario válido.',
           ),
         ),
       );
       return;
     }
 
+    final usuarioId = rawUsuarioId.trim();
+    final solId = isValidObjectId(widget.solicitudId)
+        ? widget.solicitudId!.trim()
+        : null;
+    final condId = isValidObjectId(widget.conductorId)
+        ? widget.conductorId!.trim()
+        : null;
+
+    final config = _noveltyConfig[_selectedNovelty] ?? {
+      'tipo': 'OTROS',
+      'severidad': 'BAJA',
+      'titulo': 'Novedad general en el servicio',
+      'defaultDesc': 'Reporte de novedad imprevista por parte del conductor.',
+    };
+
+    final userText = _detailsController.text.trim();
+    String finalDesc;
+    if (userText.isEmpty) {
+      finalDesc = config['defaultDesc']!;
+    } else if (userText.length < 10) {
+      finalDesc = '${config['defaultDesc']!} - Detalle: $userText';
+    } else {
+      finalDesc = userText;
+    }
+
+    if (finalDesc.length > 1000) {
+      finalDesc = finalDesc.substring(0, 1000);
+    }
+
+    final titulo = config['titulo']!;
+    final tipo = config['tipo']!;
+    final severidad = config['severidad']!;
+
     setState(() => _isCreating = true);
     try {
       await _novedadService.crearNovedad(
         Novedad(
-          solicitudId: widget.solicitudId,
-          conductorId: widget.conductorId,
+          titulo: titulo,
+          descripcion: finalDesc,
+          tipo: tipo,
+          severidad: severidad,
+          solicitudId: solId,
+          conductorId: condId,
           usuarioRegistroId: usuarioId,
-          tipo: _selectedNovelty,
-          descripcion: _detailsController.text.trim().isEmpty
-              ? _selectedNovelty
-              : _detailsController.text.trim(),
+          estadoNovedad: 'PENDIENTE',
         ),
       );
       if (!mounted) return;
@@ -81,10 +187,10 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo reportar la novedad.')),
+          SnackBar(content: Text('No se pudo reportar la novedad: $e')),
         );
       }
     } finally {
@@ -303,53 +409,123 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _hasPhoto = !_hasPhoto;
-                        });
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        height: 150,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8F9FA),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: _hasPhoto
-                                ? const Color(0xFFFF8A00)
-                                : Colors.grey[300]!,
-                            width: 2,
+                    if (_photoFile != null)
+                      Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.file(
+                              File(_photoFile!.path),
+                              width: double.infinity,
+                              height: 180,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _photoFile = null;
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 8,
+                            right: 8,
+                            child: GestureDetector(
+                              onTap: _takePhoto,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.7),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.camera_alt,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Cambiar foto',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      GestureDetector(
+                        onTap: _takePhoto,
+                        child: Container(
+                          width: double.infinity,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F9FA),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFFFF8A00),
+                              width: 1.5,
+                              style: BorderStyle.solid,
+                            ),
+                          ),
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.camera_alt_rounded,
+                                color: Color(0xFFFF8A00),
+                                size: 40,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Tomar Foto con la Cámara',
+                                style: TextStyle(
+                                  color: Color(0xFFFF8A00),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Toca para abrir la cámara del dispositivo',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: _hasPhoto
-                            ? const Center(
-                                child: Icon(
-                                  Icons.check_circle,
-                                  color: Color(0xFFFF8A00),
-                                  size: 60,
-                                ),
-                              )
-                            : const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.camera_alt_rounded,
-                                    color: Colors.grey,
-                                    size: 40,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Tomar Foto',
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
                       ),
-                    ),
                   ],
                 ),
               ),

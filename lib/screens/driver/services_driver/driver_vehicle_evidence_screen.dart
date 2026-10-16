@@ -370,8 +370,8 @@ class _DriverVehicleEvidenceScreenState
                     Expanded(
                       child: Text(
                         _allPhotosTaken
-                          ? '¡Excelente! Las 4 fotos exteriores han sido capturadas y están listas para subirse a Cloudinary.'
-                          : 'Toma las 4 fotos exteriores del vehículo con la cámara (Frontal, Trasera y ambos Laterales) para inspeccionarlo antes de iniciar el viaje.',
+                          ? '¡Excelente! Las 4 fotos exteriores han sido capturadas y están listas para subirse y ver el mapa.'
+                          : 'Toma las 4 fotos exteriores del vehículo con la cámara (Frontal, Trasera y ambos Laterales) para desbloquear el mapa e iniciar el viaje hacia el destino.',
                         style: TextStyle(
                           fontSize: 13,
                           color: _allPhotosTaken
@@ -487,8 +487,8 @@ class _DriverVehicleEvidenceScreenState
                           children: [
                             Text(
                               _allPhotosTaken
-                                  ? 'Iniciar Viaje'
-                                  : 'Tomar 4 fotos para iniciar',
+                                  ? 'Guardar Fotos y Ver Mapa'
+                                  : 'Toma las 4 fotos para ver mapa',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -496,7 +496,7 @@ class _DriverVehicleEvidenceScreenState
                             ),
                             if (_allPhotosTaken) ...[
                               const SizedBox(width: 8),
-                              const Icon(Icons.arrow_forward_rounded, size: 20),
+                              const Icon(Icons.map_rounded, size: 20),
                             ],
                           ],
                         ),

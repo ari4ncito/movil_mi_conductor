@@ -39,6 +39,25 @@ class DriverSection extends StatefulWidget {
 class _DriverSectionState extends State<DriverSection> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
+  String _nombreConductor = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarNombreConductor();
+  }
+
+  Future<void> _cargarNombreConductor() async {
+    try {
+      final user = await AuthService.obtenerUsuario();
+      if (user != null && mounted) {
+        final nombre = user['nombre']?.toString() ?? '';
+        setState(() {
+          _nombreConductor = nombre;
+        });
+      }
+    } catch (_) {}
+  }
 
   final List<Widget> _screens = [
     const DriverHomeScreen(),
@@ -141,9 +160,11 @@ class _DriverSectionState extends State<DriverSection> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Bienvenido Conductor',
-                  style: TextStyle(
+                Text(
+                  _nombreConductor.isNotEmpty
+                      ? 'Bienvenido, $_nombreConductor'
+                      : 'Bienvenido Conductor',
+                  style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 17,
                     letterSpacing: 0.2,
