@@ -4,7 +4,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import '../../../models/solicitud.dart';
+import '../../../services/auth_service.dart';
 import 'driver_arrived_screen.dart';
+import 'driver_report_novelty_screen.dart';
 import 'driver_vehicle_delivery_verification.dart';
 
 // ─────────────────────────────────────────────
@@ -17,10 +19,12 @@ class AppColors {
   static const Color petrolDark = Color(0xFF0B3B4A);
   static const Color petrolBase = Color(0xFF12566B);
   static const Color petrolLight = Color(0xFF1D7A94);
+  static const Color petrolPale = Color(0xFFE7F0F2);
   static const Color slateGray = Color(0xFF5C6B73);
   static const Color borderGray = Color(0xFFE1E7E9);
   static const Color textPrimary = Color(0xFF16262D);
   static const Color accentOrange = Color(0xFFE8821E);
+  static const Color accentOrangeSoft = Color(0xFFFBE3CB);
   static const Color white = Colors.white;
   static const Color success = Color(0xFF2E7D5B); // verde para "punto de origen"
 }
@@ -42,6 +46,7 @@ class DriverNavigationScreen extends StatefulWidget {
 class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
   List<LatLng> _routePoints = [];
   bool _isLoadingRoute = true;
+  bool _isCardMinimized = false;
   final MapController _mapController = MapController();
   
   // Coordenadas fallback (Medellín, Colombia)
@@ -143,10 +148,28 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
     }
   }
 
+  Future<void> _openReportNovelty(BuildContext context) async {
+    final usuarioId = await AuthService.obtenerUsuarioId();
+    final conductorId = widget.solicitud?.conductorId ??
+        widget.solicitud?.conductorData?['_id'] ??
+        widget.solicitud?.conductorData?['id'];
+
+    if (!context.mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => DriverReportNoveltyScreen(
+          solicitudId: widget.solicitud?.id,
+          conductorId: conductorId?.toString(),
+          usuarioId: usuarioId,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Extraer datos reales
-    final driverName = widget.solicitud?.conductorData?['nombre'] ?? 'Ruta al Cliente';
+    // Extraer datos reales del cliente y vehículo
+    final clientName = widget.solicitud?.clienteNombre ?? 'Cliente';
     final vehicleData = widget.solicitud?.vehiculoData ?? {};
     final marca = vehicleData['marca'] ?? 'Vehículo';
     final modelo = vehicleData['modelo'] ?? '';
@@ -273,8 +296,9 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
                           ],
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
-                          onPressed: () {},
+                          icon: const Icon(Icons.warning_amber_rounded, color: AppColors.accentOrange),
+                          tooltip: 'Reportar Novedad',
+                          onPressed: () => _openReportNovelty(context),
                         ),
                       ),
                     ],
@@ -352,10 +376,12 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
             ),
           ),
 
-          // Tarjeta inferior con info del conductor y viaje
+          // Tarjeta inferior con info del cliente y viaje (Minimizable para ver el mapa)
           Align(
             alignment: Alignment.bottomCenter,
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeInOut,
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppColors.white,
@@ -370,294 +396,472 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: _isCardMinimized ? 12 : 20,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Info del conductor
-                    Row(
-                      children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.accentOrange, width: 2),
-                            image: const DecorationImage(
-                              image: NetworkImage(
-                                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop',
-                              ),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                driverName,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              const Row(
-                                children: [
-                                  Icon(
-                                    Icons.star,
-                                    color: AppColors.accentOrange,
-                                    size: 16,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    '4.9 · 240 viajes',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: AppColors.slateGray,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                vehicleDetails.isEmpty ? 'Vehículo no especificado' : vehicleDetails,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.slateGray,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
+                    // Manija para arrastrar / tocar y minimizar o expandir
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isCardMinimized = !_isCardMinimized;
+                        });
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
                               width: 44,
-                              height: 44,
+                              height: 5,
                               decoration: BoxDecoration(
-                                color: AppColors.background,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.borderGray),
-                              ),
-                              child: const Icon(
-                                Icons.call,
-                                color: AppColors.petrolDark,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: AppColors.background,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.borderGray),
-                              ),
-                              child: const Icon(
-                                Icons.message_outlined,
-                                color: AppColors.petrolDark,
-                                size: 20,
+                                color: Colors.grey[350],
+                                borderRadius: BorderRadius.circular(3),
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Info del viaje
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.borderGray, width: 1),
                       ),
-                      child: Column(
+                    ),
+
+                    if (_isCardMinimized) ...[
+                      // VISTA MINIMIZADA (Para ver el mapa completo)
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 12,
-                                height: 12,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.success,
-                                  shape: BoxShape.circle,
-                                ),
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: AppColors.petrolPale,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.accentOrange,
+                                width: 1.5,
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  originAddress,
+                            ),
+                            child: const Icon(
+                              Icons.person_rounded,
+                              color: AppColors.petrolDark,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  clientName,
                                   style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
                                     color: AppColors.textPrimary,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  widget.isDrivingToDestination
+                                      ? 'En ruta · Destino final'
+                                      : 'Punto de recogida · En camino',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.slateGray,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.keyboard_arrow_up_rounded,
+                              size: 30,
+                              color: AppColors.petrolDark,
+                            ),
+                            tooltip: 'Expandir información',
+                            onPressed: () {
+                              setState(() {
+                                _isCardMinimized = false;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(24),
+                            gradient: const LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [AppColors.petrolBase, AppColors.petrolDark],
+                            ),
+                          ),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (widget.isDrivingToDestination) {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        DriverVehicleDeliveryVerification(
+                                      solicitud: widget.solicitud,
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => DriverArrivedScreen(
+                                      solicitud: widget.solicitud,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: AppColors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                            ),
+                            child: Text(
+                              widget.isDrivingToDestination
+                                  ? 'Finalizar / Entregar Vehículo'
+                                  : 'Confirmar Llegada (Punto de Recogida)',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      // VISTA EXPANDIDA COMPLETA
+                      Row(
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: AppColors.petrolPale,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.accentOrange,
+                                width: 2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.person_rounded,
+                              color: AppColors.petrolDark,
+                              size: 30,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.accentOrangeSoft,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        'CLIENTE',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.accentOrange,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  clientName,
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  vehicleDetails.isEmpty
+                                      ? 'Vehículo del servicio'
+                                      : vehicleDetails,
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    color: AppColors.slateGray,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 30,
+                              color: AppColors.petrolDark,
+                            ),
+                            tooltip: 'Minimizar para ver mapa',
+                            onPressed: () {
+                              setState(() {
+                                _isCardMinimized = true;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Info del viaje
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.borderGray,
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.success,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    originAddress,
+                                    style: const TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 5.5),
+                              child: Container(
+                                height: 18,
+                                width: 2,
+                                color: AppColors.borderGray,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.accentOrange,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    destAddress,
+                                    style: const TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Tiempo estimado
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Llegada estimada',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.slateGray,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                '14:30',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                             ],
                           ),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 5.5),
-                            child: Container(
-                              height: 24,
-                              width: 2,
-                              color: AppColors.borderGray,
-                            ),
-                          ),
-                          Row(
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Container(
-                                width: 12,
-                                height: 12,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.accentOrange,
-                                  shape: BoxShape.circle,
+                              Text(
+                                'Tiempo restante',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.slateGray,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  destAddress,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
+                              SizedBox(height: 2),
+                              Text(
+                                '15 min',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                             ],
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 16),
 
-                    // Tiempo estimado
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Llegada estimada',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.slateGray,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              '14:30',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Tiempo restante',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.slateGray,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              '15 min',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Botón para confirmar llegada (solo para prueba)
-                    SizedBox(
-                      width: double.infinity,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(30),
-                          gradient: const LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [AppColors.petrolBase, AppColors.petrolDark],
+                      // Botón para Reportar Novedad
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _openReportNovelty(context),
+                          icon: const Icon(
+                            Icons.warning_amber_rounded,
+                            color: AppColors.accentOrange,
+                            size: 18,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.petrolDark.withAlpha(76),
-                              blurRadius: 14,
-                              offset: const Offset(0, 6),
+                          label: const Text(
+                            'Reportar Novedad',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.petrolDark,
                             ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (widget.isDrivingToDestination) {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      DriverVehicleDeliveryVerification(
-                                    solicitud: widget.solicitud,
-                                  ),
-                                ),
-                              );
-                            } else {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => DriverArrivedScreen(
-                                    solicitud: widget.solicitud,
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            foregroundColor: AppColors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            elevation: 0,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(
+                              color: AppColors.accentOrange,
+                              width: 1.5,
+                            ),
+                            backgroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
-                          child: Text(
-                            widget.isDrivingToDestination
-                                ? 'Llegada a Destino / Entregar Vehículo'
-                                : 'Confirmar Llegada (Punto de Recogida)',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.3,
+                              borderRadius: BorderRadius.circular(24),
                             ),
                           ),
                         ),
                       ),
-                    ),
+
+                      const SizedBox(height: 10),
+
+                      // Botón para confirmar llegada / entregar vehículo
+                      SizedBox(
+                        width: double.infinity,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(30),
+                            gradient: const LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [AppColors.petrolBase, AppColors.petrolDark],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.petrolDark.withAlpha(76),
+                                blurRadius: 14,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (widget.isDrivingToDestination) {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        DriverVehicleDeliveryVerification(
+                                      solicitud: widget.solicitud,
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => DriverArrivedScreen(
+                                      solicitud: widget.solicitud,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: AppColors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: Text(
+                              widget.isDrivingToDestination
+                                  ? 'Llegada a Destino / Entregar Vehículo'
+                                  : 'Confirmar Llegada (Punto de Recogida)',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

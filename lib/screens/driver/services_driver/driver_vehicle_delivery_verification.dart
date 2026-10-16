@@ -176,38 +176,44 @@ class _DriverVehicleDeliveryVerificationState
 
     try {
       final solicitudId = widget.solicitud?.id;
+      Solicitud? solicitudActualizada = widget.solicitud;
       if (solicitudId != null && solicitudId.isNotEmpty) {
-        // 1. Obtener el servicio asociado
-        final servicio = await _servicioService.obtenerPorSolicitud(solicitudId);
-        final servicioId = (servicio?['_id'] ?? servicio?['id'])?.toString();
+        // 1. Intentar subir las 4 imágenes de entrega a Cloudinary
+        try {
+          final servicio = await _servicioService.obtenerPorSolicitud(solicitudId);
+          final servicioId = (servicio?['_id'] ?? servicio?['id'])?.toString();
 
-        if (servicioId != null && servicioId.isNotEmpty) {
-          // 2. Subir las 4 imágenes de entrega a Cloudinary
-          final archivos = _photos.values.whereType<XFile>().toList();
-          await _servicioService.subirImagenes(
-            servicioId: servicioId,
-            archivos: archivos,
-          );
+          if (servicioId != null && servicioId.isNotEmpty) {
+            final archivos = _photos.values.whereType<XFile>().toList();
+            if (archivos.isNotEmpty) {
+              await _servicioService.subirImagenes(
+                servicioId: servicioId,
+                archivos: archivos,
+              );
+            }
+          }
+        } catch (imgError) {
+          debugPrint('Aviso al subir imágenes de entrega a Cloudinary: $imgError');
         }
 
-        // 3. Completar la solicitud en el backend
-        await _solicitudService.completar(solicitudId);
+        // 2. Completar la solicitud en el backend (cambia estado a COMPLETADO)
+        solicitudActualizada = await _solicitudService.completar(solicitudId);
       }
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Evidencias de entrega subidas a Cloudinary y servicio finalizado.'),
+          content: Text('Evidencias de entrega registradas y servicio completado.'),
           backgroundColor: AppColors.successGreen,
         ),
       );
 
-      // 4. Navegar a la pantalla de resumen / calificación
+      // 3. Navegar a la pantalla de resumen / calificación
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => DriverStartVerificationScreen(
-            solicitud: widget.solicitud,
+            solicitud: solicitudActualizada,
           ),
         ),
       );

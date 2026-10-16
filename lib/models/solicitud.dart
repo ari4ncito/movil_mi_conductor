@@ -17,6 +17,7 @@ class Solicitud {
   final String? motivoCancelacion;
   final Map<String, dynamic>? conductorData;
   final Map<String, dynamic>? vehiculoData;
+  final Map<String, dynamic>? clienteData;
 
   const Solicitud({
     this.id,
@@ -37,6 +38,7 @@ class Solicitud {
     this.motivoCancelacion,
     this.conductorData,
     this.vehiculoData,
+    this.clienteData,
   });
 
   String? get clienteId => cliente;
@@ -44,6 +46,24 @@ class Solicitud {
   String? get vehiculoId => vehiculo;
   DateTime? get fechaSolicitud => createdAt;
   num? get precio => null;
+
+  String get clienteNombre {
+    if (clienteData != null) {
+      final user = clienteData!['usuario'];
+      if (user is Map) {
+        final nombre = user['nombre']?.toString() ?? '';
+        final apellido = user['apellido']?.toString() ?? '';
+        final full = '$nombre $apellido'.trim();
+        if (full.isNotEmpty) return full;
+      }
+      final nombre = clienteData!['nombre']?.toString();
+      if (nombre != null && nombre.isNotEmpty) return nombre;
+    }
+    if (correoCliente != null && correoCliente!.isNotEmpty) {
+      return correoCliente!;
+    }
+    return cliente ?? 'Cliente asignado';
+  }
 
   factory Solicitud.fromJson(Map<String, dynamic> json) => Solicitud(
     id: _string(json['_id'] ?? json['id']),
@@ -67,6 +87,7 @@ class Solicitud {
     conductorData: json['conductorAsignado'] is Map ? Map<String, dynamic>.from(json['conductorAsignado']) : 
                    json['conductor'] is Map ? Map<String, dynamic>.from(json['conductor']) : null,
     vehiculoData: json['vehiculo'] is Map ? Map<String, dynamic>.from(json['vehiculo']) : null,
+    clienteData: json['cliente'] is Map ? Map<String, dynamic>.from(json['cliente']) : null,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{

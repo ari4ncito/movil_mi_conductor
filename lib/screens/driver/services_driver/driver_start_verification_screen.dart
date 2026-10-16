@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/solicitud.dart';
+import '../../../services/solicitud_service.dart';
 
 
 // ─────────────────────────────────────────────
@@ -104,7 +105,7 @@ class _DriverStartVerificationScreenState
               ),
               const SizedBox(height: 16),
               Text(
-                widget.solicitud?.correoCliente ?? 'Cliente',
+                widget.solicitud?.clienteNombre ?? widget.solicitud?.correoCliente ?? 'Cliente',
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -202,8 +203,16 @@ class _DriverStartVerificationScreenState
                     ],
                   ),
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    onPressed: () async {
+                      final solId = widget.solicitud?.id;
+                      if (solId != null && solId.isNotEmpty) {
+                        try {
+                          await SolicitudService().completar(solId);
+                        } catch (_) {}
+                      }
+                      if (context.mounted) {
+                        Navigator.of(context).popUntil((route) => route.isFirst);
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,

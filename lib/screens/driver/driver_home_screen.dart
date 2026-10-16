@@ -5,7 +5,7 @@ import '../../services/auth_service.dart';
 import '../../services/conductor_service.dart';
 import '../../services/solicitud_service.dart';
 import '../../models/solicitud.dart';
-import 'services_driver/driver_navigation_screen.dart';
+import 'services_driver/driver_arrived_screen.dart';
 
 class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({super.key});
@@ -44,36 +44,41 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     super.dispose();
   }
 
+  Future<void> _refrescarSolicitud() async {
+    if (!mounted || _conductorId == null) return;
+    try {
+      final solicitudes = await _solicitudService.listar();
+      final activa = solicitudes.where((s) {
+        final estadoUpper = (s.estado ?? '').trim().toUpperCase();
+        final isTerminated = [
+          'COMPLETADO',
+          'COMPLETADA',
+          'FINALIZADO',
+          'FINALIZADA',
+          'CANCELADO',
+          'CANCELADA',
+        ].contains(estadoUpper);
+        final matchesConductor = s.conductorId == _conductorId;
+        return !isTerminated && matchesConductor;
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _debugPollingText = 'ConductorId: $_conductorId\nSolicitudes: ${solicitudes.length} · Activas: ${activa.length}';
+          _solicitudAsignada = activa.isNotEmpty ? activa.first : null;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error al refrescar solicitud: $e');
+    }
+  }
+
   void _startPolling() {
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+    _refrescarSolicitud();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
       if (!_isAvailable || _conductorId == null) return;
-      try {
-        final solicitudes = await _solicitudService.listar();
-        final activa = solicitudes.where((s) {
-          final isTerminated = ['Completada', 'Cancelada', 'Cancelado', 'Completado', 'Finalizada', 'Finalizado'].contains(s.estado);
-          final matchesConductor = s.conductorId == _conductorId;
-          return !isTerminated && matchesConductor;
-        }).toList();
-        
-        if (mounted) {
-          setState(() {
-            _debugPollingText = 'ConductorId: $_conductorId\nTotal solicitudes recibidas: ${solicitudes.length}\nActivas para ti: ${activa.length}\nEjemplo conductorIds recibidos: ${solicitudes.take(3).map((s) => s.conductorId).join(',')}';
-            if (activa.isNotEmpty) {
-              _solicitudAsignada = activa.first;
-            } else {
-              _solicitudAsignada = null;
-            }
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _debugPollingText = 'Error en polling: $e';
-          });
-        }
-        debugPrint('Error en polling de solicitudes: $e');
-      }
+      await _refrescarSolicitud();
     });
   }
 
@@ -447,7 +452,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                               ),
                               title: const Text('Cliente'),
                               subtitle: Text(
-                                _solicitudAsignada!.cliente ?? 'Cliente asignado',
+                                _solicitudAsignada!.clienteNombre,
                                 style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black),
                               ),
                             ),
@@ -481,16 +486,17 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: () {
+                                onPressed: () async {
                                   if (_solicitudAsignada != null) {
-                                    Navigator.push(
+                                    await Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => DriverNavigationScreen(
+                                        builder: (context) => DriverArrivedScreen(
                                           solicitud: _solicitudAsignada,
                                         ),
                                       ),
                                     );
+                                    await _refrescarSolicitud();
                                   }
                                 },
                                 style: ElevatedButton.styleFrom(
