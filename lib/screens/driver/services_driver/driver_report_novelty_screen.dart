@@ -1,10 +1,11 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../models/novedad.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/cloudinary_service.dart';
 import '../../../services/http_client.dart';
 import '../../../services/novedad_service.dart';
+import '../../../widgets/xfile_image_widget.dart';
 
 class DriverReportNoveltyScreen extends StatefulWidget {
   final String? solicitudId;
@@ -164,6 +165,18 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
 
     setState(() => _isCreating = true);
     try {
+      String? fotoEvidenciaUrl;
+      if (_photoFile != null) {
+        try {
+          fotoEvidenciaUrl = await CloudinaryService.subirImagen(
+            _photoFile!,
+            folder: 'novedades',
+          );
+        } catch (uploadErr) {
+          debugPrint('Aviso al subir imagen de novedad a Cloudinary: $uploadErr');
+        }
+      }
+
       await _novedadService.crearNovedad(
         Novedad(
           titulo: titulo,
@@ -173,6 +186,7 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
           solicitudId: solId,
           conductorId: condId,
           usuarioRegistroId: usuarioId,
+          evidenciaUrl: fotoEvidenciaUrl,
           estadoNovedad: 'PENDIENTE',
         ),
       );
@@ -414,8 +428,8 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(16),
-                            child: Image.file(
-                              File(_photoFile!.path),
+                            child: XFileImageWidget(
+                              file: _photoFile!,
                               width: double.infinity,
                               height: 180,
                               fit: BoxFit.cover,

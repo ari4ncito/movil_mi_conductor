@@ -1,5 +1,16 @@
 import 'package:flutter/material.dart';
 
+class AppColors {
+  static const Color background = Color(0xFFF2F5F6);
+  static const Color petrolDark = Color(0xFF0B3B4A);
+  static const Color petrolBase = Color(0xFF12566B);
+  static const Color petrolLight = Color(0xFF1D7A94);
+  static const Color petrolPale = Color(0xFFE7F0F2);
+  static const Color slateGray = Color(0xFF5C6B73);
+  static const Color borderGray = Color(0xFFE1E7E9);
+  static const Color textPrimary = Color(0xFF16262D);
+}
+
 class HelpSupportScreen extends StatelessWidget {
   const HelpSupportScreen({super.key});
 
@@ -43,16 +54,6 @@ class HelpSupportScreen extends StatelessWidget {
                 question: '¿Cómo puedo cancelar un viaje?',
                 answer: 'Puedes cancelar un viaje desde la pantalla de "Viaje en curso" o desde el historial de viajes. Las cancelaciones gratuitas dependen del tiempo transcurrido desde la confirmación.',
               ),
-              const SizedBox(height: 12),
-              _buildFAQItem(
-                question: '¿Qué hago si olvidé algo en el auto?',
-                answer: 'Contacta a soporte inmediatamente con los detalles de tu viaje. Intentaremos contactar al conductor para recuperar tu objeto.',
-              ),
-              const SizedBox(height: 12),
-              _buildFAQItem(
-                question: '¿Cómo actualizar mi método de pago?',
-                answer: 'Ve a Mi Perfil > Métodos de Pago, donde podrás agregar, editar o eliminar tarjetas.',
-              ),
               const SizedBox(height: 24),
               // Contact section
               const Text(
@@ -65,21 +66,15 @@ class HelpSupportScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _buildContactOption(
-                icon: Icons.phone,
+                icon: Icons.phone_rounded,
                 label: 'Llámanos',
                 value: '+52 55 1234 5678',
               ),
               const SizedBox(height: 12),
               _buildContactOption(
-                icon: Icons.email,
+                icon: Icons.email_rounded,
                 label: 'Correo Electrónico',
                 value: 'soporte@miconductor.com',
-              ),
-              const SizedBox(height: 12),
-              _buildContactOption(
-                icon: Icons.chat,
-                label: 'Chat en Vivo',
-                value: 'Disponible 24/7',
               ),
             ],
           ),
@@ -99,7 +94,7 @@ class HelpSupportScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -143,7 +138,7 @@ class HelpSupportScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -155,12 +150,12 @@ class HelpSupportScreen extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFFFF8A00).withOpacity(0.1),
+              color: AppColors.petrolPale,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
-              color: const Color(0xFFFF8A00),
+              color: AppColors.petrolBase,
               size: 24,
             ),
           ),

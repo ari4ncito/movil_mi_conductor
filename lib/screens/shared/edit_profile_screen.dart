@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/usuario_service.dart';
 import '../../services/cliente_service.dart';
-import '../../services/conductor_service.dart';
 
 class AppColors {
   static const Color background = Color(0xFFF2F5F6);
@@ -34,25 +33,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _correoController = TextEditingController();
   final _telefonoController = TextEditingController();
   final _direccionController = TextEditingController();
-  final _experienciaController = TextEditingController();
-
-  // Password change controllers
-  final _nuevaPasswordController = TextEditingController();
-  final _confirmarPasswordController = TextEditingController();
 
   String _tipoDocumento = 'CC';
   String _rol = '';
   String? _usuarioId;
   String? _clienteId;
-  String? _conductorId;
-  String _licencia = '';
-  String _categoriaLicencia = '';
 
   bool _isLoading = true;
   bool _isSaving = false;
-  bool _cambiarPassword = false;
-  bool _obscureNuevaPassword = true;
-  bool _obscureConfirmarPassword = true;
 
   final List<Map<String, String>> _tiposDocumento = const [
     {'value': 'CC', 'label': 'Cédula de Ciudadanía (CC)'},
@@ -76,9 +64,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _correoController.dispose();
     _telefonoController.dispose();
     _direccionController.dispose();
-    _experienciaController.dispose();
-    _nuevaPasswordController.dispose();
-    _confirmarPasswordController.dispose();
     super.dispose();
   }
 
@@ -135,16 +120,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 _direccionController.text = cliente['direccion']?.toString() ?? '';
               }
             } catch (_) {}
-          } else if (_rol == 'CONDUCTOR') {
-            try {
-              final conductor = await ConductorService.obtenerPorUsuario(_usuarioId!);
-              if (mounted) {
-                _conductorId = conductor['_id']?.toString() ?? conductor['id']?.toString();
-                _licencia = conductor['licencia']?.toString() ?? '';
-                _categoriaLicencia = conductor['categoriaLicencia']?.toString() ?? '';
-                _experienciaController.text = (conductor['experiencia'] ?? '0').toString();
-              }
-            } catch (_) {}
           }
         }
       }
@@ -170,27 +145,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
-    if (_cambiarPassword) {
-      if (_nuevaPasswordController.text.length < 6) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('La nueva contraseña debe tener al menos 6 caracteres.'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-        return;
-      }
-      if (_nuevaPasswordController.text != _confirmarPasswordController.text) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Las contraseñas no coinciden.'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-        return;
-      }
-    }
-
     if (_usuarioId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -214,10 +168,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'telefono': _telefonoController.text.trim(),
       };
 
-      if (_cambiarPassword && _nuevaPasswordController.text.trim().isNotEmpty) {
-        datosUsuario['password'] = _nuevaPasswordController.text.trim();
-      }
-
       await UsuarioService.actualizar(_usuarioId!, datosUsuario);
 
       // 2. Si es Cliente, actualizar dirección en Cliente
@@ -231,15 +181,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
       }
 
-      // 3. Si es Conductor, actualizar experiencia si se modificó
-      if (_rol == 'CONDUCTOR' && _conductorId != null && _experienciaController.text.trim().isNotEmpty) {
-        try {
-          final expNum = int.tryParse(_experienciaController.text.trim()) ?? 0;
-          await ConductorService.actualizar(_conductorId!, {
-            'experiencia': expNum,
-          });
-        } catch (_) {}
-      }
+
 
       if (!mounted) return;
 
@@ -427,45 +369,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ],
                       ),
 
-                      // Sección para conductor: Licencia y Experiencia
-                      if (_rol == 'CONDUCTOR') ...[
-                        const SizedBox(height: 20),
-                        _buildSectionCard(
-                          title: 'Datos de Conducción',
-                          icon: Icons.drive_eta_rounded,
-                          children: [
-                            if (_licencia.isNotEmpty) ...[
-                              _buildInfoRow('Licencia de Conducción', _licencia, Icons.credit_card_rounded),
-                              const SizedBox(height: 12),
-                            ],
-                            if (_categoriaLicencia.isNotEmpty) ...[
-                              _buildInfoRow('Categoría', _categoriaLicencia, Icons.verified_rounded),
-                              const SizedBox(height: 16),
-                            ],
-                            _buildTextField(
-                              controller: _experienciaController,
-                              label: 'Años de Experiencia',
-                              hint: 'Ej. 3',
-                              icon: Icons.timer_outlined,
-                              keyboardType: TextInputType.number,
-                              validator: (val) {
-                                if (val != null && val.trim().isNotEmpty) {
-                                  final n = int.tryParse(val.trim());
-                                  if (n == null || n < 0) {
-                                    return 'Debe ser un número válido.';
-                                  }
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
 
-                      const SizedBox(height: 20),
 
-                      // Sección: Cambiar Contraseña (Opcional)
-                      _buildSecurityCard(),
+
 
                       const SizedBox(height: 32),
 
@@ -481,7 +387,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.petrolDark.withOpacity(0.3),
+                                color: AppColors.petrolDark.withValues(alpha: 0.3),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -550,7 +456,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         border: Border.all(color: AppColors.borderGray),
         boxShadow: [
           BoxShadow(
-            color: AppColors.petrolDark.withOpacity(0.06),
+            color: AppColors.petrolDark.withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -568,7 +474,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.petrolDark.withOpacity(0.2),
+                  color: AppColors.petrolDark.withValues(alpha: 0.2),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -618,7 +524,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.accentOrange.withOpacity(0.12),
+                    color: AppColors.accentOrange.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -652,7 +558,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         border: Border.all(color: AppColors.borderGray),
         boxShadow: [
           BoxShadow(
-            color: AppColors.petrolDark.withOpacity(0.05),
+            color: AppColors.petrolDark.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -673,12 +579,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: Icon(icon, color: AppColors.petrolBase, size: 18),
               ),
               const SizedBox(width: 10),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
             ],
@@ -787,179 +695,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               setState(() => _tipoDocumento = val);
             }
           },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoRow(String title, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.petrolPale,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.petrolBase, size: 20),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.slateGray,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.petrolDark,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSecurityCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderGray),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.petrolDark.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.petrolPale,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.lock_outline_rounded, color: AppColors.petrolBase, size: 18),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Seguridad (Opcional)',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              Switch(
-                value: _cambiarPassword,
-                activeColor: AppColors.accentOrange,
-                onChanged: (val) {
-                  setState(() {
-                    _cambiarPassword = val;
-                    if (!val) {
-                      _nuevaPasswordController.clear();
-                      _confirmarPasswordController.clear();
-                    }
-                  });
-                },
-              ),
-            ],
-          ),
-          if (_cambiarPassword) ...[
-            const SizedBox(height: 16),
-            const Text(
-              'Ingresa tu nueva contraseña para actualizarla:',
-              style: TextStyle(fontSize: 13, color: AppColors.slateGray),
-            ),
-            const SizedBox(height: 14),
-            _buildPasswordField(
-              controller: _nuevaPasswordController,
-              label: 'Nueva Contraseña',
-              hint: 'Mínimo 6 caracteres',
-              obscureText: _obscureNuevaPassword,
-              onToggleVisibility: () {
-                setState(() => _obscureNuevaPassword = !_obscureNuevaPassword);
-              },
-            ),
-            const SizedBox(height: 14),
-            _buildPasswordField(
-              controller: _confirmarPasswordController,
-              label: 'Confirmar Nueva Contraseña',
-              hint: 'Repite la contraseña',
-              obscureText: _obscureConfirmarPassword,
-              onToggleVisibility: () {
-                setState(() => _obscureConfirmarPassword = !_obscureConfirmarPassword);
-              },
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPasswordField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required bool obscureText,
-    required VoidCallback onToggleVisibility,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: controller,
-          obscureText: obscureText,
-          style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(color: Color(0xFF9EACB2), fontSize: 14),
-            prefixIcon: const Icon(Icons.lock_outline, color: AppColors.slateGray, size: 20),
-            suffixIcon: IconButton(
-              icon: Icon(
-                obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                color: AppColors.slateGray,
-                size: 20,
-              ),
-              onPressed: onToggleVisibility,
-            ),
-            filled: true,
-            fillColor: const Color(0xFFF7FAFA),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.borderGray),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.petrolBase, width: 1.5),
-            ),
-          ),
         ),
       ],
     );

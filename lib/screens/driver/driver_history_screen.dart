@@ -267,14 +267,33 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
     );
   }
 
+  (Color, Color, String) _getStatusTheme(String? status) {
+    final s = (status ?? '').trim().toUpperCase();
+    if (s.contains('COMPLET')) {
+      return (const Color(0xFF2E7D32), const Color(0xFFE8F9F0), 'Completado');
+    } else if (s.contains('CANCEL')) {
+      return (const Color(0xFFC62828), const Color(0xFFFFEBEE), 'Cancelado');
+    } else if (s.contains('PROCES') || s.contains('CURSO')) {
+      return (const Color(0xFF0277BD), const Color(0xFFE1F5FE), 'En proceso');
+    } else if (s.contains('PENDIENT')) {
+      return (const Color(0xFFEF6C00), const Color(0xFFFFF3E0), 'Pendiente');
+    } else if (status != null && status.trim().isNotEmpty) {
+      return (const Color(0xFF546E7A), const Color(0xFFECEFF1), status);
+    }
+    return (const Color(0xFF546E7A), const Color(0xFFECEFF1), 'Sin estado');
+  }
+
   void _showRideDetails(
     BuildContext context,
     String date,
     String pickup,
     String destination,
     String driver,
-    double driverRating,
-  ) {
+    double driverRating, {
+    String? status,
+  }) {
+    final (statusColor, statusBgColor, statusLabel) = _getStatusTheme(status);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -403,6 +422,8 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Row(
                         children: [
@@ -417,18 +438,19 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F9F0),
+                    color: statusBgColor,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text(
-                    'Completado',
+                  child: Text(
+                    statusLabel,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF2E7D32),
+                      color: statusColor,
                     ),
                   ),
                 ),
@@ -466,6 +488,8 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
     required double driverRating,
     String? status,
   }) {
+    final (statusColor, statusBgColor, statusLabel) = _getStatusTheme(status);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -486,16 +510,28 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                date,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  date,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               InkWell(
-                onTap: () => _showRideDetails(context, date, pickup, destination, driver, driverRating),
+                onTap: () => _showRideDetails(
+                  context,
+                  date,
+                  pickup,
+                  destination,
+                  driver,
+                  driverRating,
+                  status: status,
+                ),
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -554,11 +590,15 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                     Text(
                       pickup,
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 12),
                     Text(
                       destination,
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -569,63 +609,71 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
           Container(height: 1, width: double.infinity, color: Colors.grey[200]),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF5F7FA),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.person, color: Colors.black),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        driver,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF5F7FA),
+                        shape: BoxShape.circle,
                       ),
-                      Row(
+                      child: const Icon(Icons.person, color: Colors.black87),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 16),
-                          const SizedBox(width: 4),
                           Text(
-                            driverRating.toString(),
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
+                            driver,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              const Icon(Icons.star, color: Colors.amber, size: 15),
+                              const SizedBox(width: 4),
+                              Text(
+                                driverRating.toString(),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+                  horizontal: 10,
+                  vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8F9F0),
-                  borderRadius: BorderRadius.circular(12),
+                  color: statusBgColor,
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  status ?? 'Sin estado',
-                  style: const TextStyle(
+                  statusLabel,
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF2E7D32),
+                    color: statusColor,
                   ),
                 ),
               ),

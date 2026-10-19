@@ -1,9 +1,7 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../config/api_config.dart';
-import 'auth_service.dart';
+import 'cloudinary_service.dart';
 import 'http_client.dart';
 
 class ServicioService {
@@ -34,48 +32,50 @@ class ServicioService {
     return null;
   }
 
-  /// Subir evidencias / imágenes del vehículo a Cloudinary a través del backend
+  /// Subir evidencias / imágenes del vehículo directamente a Cloudinary
+  /// y asociarlas al servicio en el backend en MongoDB.
   Future<Map<String, dynamic>> subirImagenes({
     required String servicioId,
     required List<XFile> archivos,
+    String? tipo,
   }) async {
-    final token = await AuthService.obtenerToken();
-    final uri = ApiConfig.uri('/servicios/$servicioId/imagenes');
-
-    final request = http.MultipartRequest('POST', uri);
-
-    if (token != null && token.isNotEmpty) {
-      request.headers['Authorization'] = 'Bearer $token';
-    }
-    request.headers['Accept'] = 'application/json';
-
-    for (final archivo in archivos) {
-      final bytes = await archivo.readAsBytes();
-      final nombre = archivo.name.isNotEmpty ? archivo.name : 'foto_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'imagenes',
-          bytes,
-          filename: nombre,
-        ),
-      );
+    if (archivos.isEmpty) {
+      return {'imagenes': <String>[]};
     }
 
-    final streamedResponse = await request.send().timeout(ApiConfig.requestTimeout);
-    final response = await http.Response.fromStream(streamedResponse);
-    final data = jsonDecode(response.body);
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (data is Map<String, dynamic> && data['data'] != null) {
-        return data['data'] as Map<String, dynamic>;
-      }
-      return data as Map<String, dynamic>;
-    }
-
-    final msg = data is Map ? data['message'] : null;
-    throw ApiException(
-      msg?.toString() ?? 'Error al subir las imágenes del vehículo.',
-      statusCode: response.statusCode,
+    // 1. Subida directa a Cloudinary (mediante preset unsigned 'reportes')
+    final urls = await CloudinaryService.subirMultiplesImagenes(
+      archivos,
+      folder: 'servicios/evidencias',
     );
+
+    // 2. Asociar las URLs seguras de Cloudinary al servicio en el backend
+    Map<String, dynamic> resultado = {
+      'imagenes': urls,
+      'fotos': urls,
+    };
+
+    if (servicioId.isNotEmpty) {
+      try {
+        final payload = {
+          'imagenes': urls,
+          if (tipo != null && tipo.isNotEmpty) 'tipo': tipo,
+        };
+        final res = await client.post(
+          '/servicios/$servicioId/imagenes',
+          body: payload,
+        );
+        if (res is Map<String, dynamic>) {
+          resultado = res;
+        }
+      } catch (backendError) {
+        debugPrint(
+          'Aviso: Imágenes subidas a Cloudinary exitosamente, '
+          'pero hubo una advertencia al registrarlas en backend: $backendError',
+        );
+      }
+    }
+
+    return resultado;
   }
 }
