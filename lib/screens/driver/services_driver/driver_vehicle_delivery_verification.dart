@@ -1,11 +1,10 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../models/solicitud.dart';
 import '../../../services/servicio_service.dart';
 import '../../../services/solicitud_service.dart';
+import '../../../widgets/xfile_image_widget.dart';
 import 'driver_start_verification_screen.dart';
 
 class AppColors {
@@ -183,14 +182,13 @@ class _DriverVehicleDeliveryVerificationState
           final servicio = await _servicioService.obtenerPorSolicitud(solicitudId);
           final servicioId = (servicio?['_id'] ?? servicio?['id'])?.toString();
 
-          if (servicioId != null && servicioId.isNotEmpty) {
-            final archivos = _photos.values.whereType<XFile>().toList();
-            if (archivos.isNotEmpty) {
-              await _servicioService.subirImagenes(
-                servicioId: servicioId,
-                archivos: archivos,
-              );
-            }
+          final archivos = _photos.values.whereType<XFile>().toList();
+          if (archivos.isNotEmpty) {
+            await _servicioService.subirImagenes(
+              servicioId: servicioId ?? '',
+              archivos: archivos,
+              tipo: 'entrega',
+            );
           }
         } catch (imgError) {
           debugPrint('Aviso al subir imágenes de entrega a Cloudinary: $imgError');
@@ -669,14 +667,8 @@ class _DriverVehicleDeliveryVerificationState
   }
 
   Widget _buildImageWidget(XFile file) {
-    if (kIsWeb) {
-      return Image.network(
-        file.path,
-        fit: BoxFit.cover,
-      );
-    }
-    return Image.file(
-      File(file.path),
+    return XFileImageWidget(
+      file: file,
       fit: BoxFit.cover,
     );
   }

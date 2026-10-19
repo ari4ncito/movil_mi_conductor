@@ -1,10 +1,9 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../models/solicitud.dart';
 import '../../../services/servicio_service.dart';
+import '../../../widgets/xfile_image_widget.dart';
 import 'driver_cancel_reason_screen.dart';
 import 'driver_navigation_screen.dart';
 
@@ -177,19 +176,21 @@ class _DriverVehicleEvidenceScreenState
 
     try {
       final solicitudId = widget.solicitud?.id;
+      String? servicioId;
       if (solicitudId != null && solicitudId.isNotEmpty) {
         // 1. Obtener o verificar el servicio asociado
         final servicio = await _servicioService.obtenerPorSolicitud(solicitudId);
-        final servicioId = (servicio?['_id'] ?? servicio?['id'])?.toString();
+        servicioId = (servicio?['_id'] ?? servicio?['id'])?.toString();
+      }
 
-        if (servicioId != null && servicioId.isNotEmpty) {
-          // 2. Subir las 4 imágenes al backend (y Cloudinary)
-          final archivos = _photos.values.whereType<XFile>().toList();
-          await _servicioService.subirImagenes(
-            servicioId: servicioId,
-            archivos: archivos,
-          );
-        }
+      // 2. Subir las 4 imágenes directamente a Cloudinary y asociarlas
+      final archivos = _photos.values.whereType<XFile>().toList();
+      if (archivos.isNotEmpty) {
+        await _servicioService.subirImagenes(
+          servicioId: servicioId ?? '',
+          archivos: archivos,
+          tipo: 'inicial',
+        );
       }
 
       if (!mounted) return;
@@ -696,14 +697,8 @@ class _DriverVehicleEvidenceScreenState
   }
 
   Widget _buildImageWidget(XFile file) {
-    if (kIsWeb) {
-      return Image.network(
-        file.path,
-        fit: BoxFit.cover,
-      );
-    }
-    return Image.file(
-      File(file.path),
+    return XFileImageWidget(
+      file: file,
       fit: BoxFit.cover,
     );
   }
