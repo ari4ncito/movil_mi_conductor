@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "641245801833",
+    "project_id": "mi-conductor-d8cf2",
+    "storage_bucket": "mi-conductor-d8cf2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:641245801833:android:5f3f9375cdf7f3ace861f8",
+        "android_client_info": {
+          "package_name": "com.miconductor.mi_conductor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0GVYe6znMuGB5hXfO2MXiTHhnGcRzFFU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

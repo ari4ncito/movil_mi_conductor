@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
+import 'fcm_service.dart';
 
 class AuthService {
   // =========================
@@ -33,6 +34,11 @@ class AuthService {
       final resultado = data['data'];
 
       await guardarSesion(resultado);
+
+      // Registrar dispositivo para notificaciones push
+      try {
+        await FcmService().registrarDispositivo();
+      } catch (_) {}
 
       return resultado;
     }
@@ -258,6 +264,11 @@ class AuthService {
   // =========================
 
   static Future<void> logout() async {
+    // Desvincular token FCM del backend antes de limpiar SharedPreferences
+    try {
+      await FcmService().desvincularDispositivo();
+    } catch (_) {}
+
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.remove('token');

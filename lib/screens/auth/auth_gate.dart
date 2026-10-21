@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/fcm_service.dart';
 import '../client/client_section.dart';
 import '../driver/driver_section.dart';
 import 'login_screen.dart';
@@ -36,6 +37,11 @@ class _AuthGateState extends State<AuthGate> {
       _irA(const LoginScreen());
       return;
     }
+
+    // Registrar o refrescar token FCM para el usuario con sesión activa
+    try {
+      FcmService().registrarDispositivo();
+    } catch (_) {}
 
     final rol = usuario['rol'];
 

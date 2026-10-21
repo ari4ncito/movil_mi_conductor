@@ -72,9 +72,15 @@ class ApiHttpClient {
     );
   }
 
-  Future<dynamic> delete(String path) async {
+  Future<dynamic> delete(String path, {Map<String, dynamic>? body}) async {
     final headers = await _getHeaders();
-    return _send(() => _client.delete(ApiConfig.uri(path), headers: headers));
+    return _send(
+      () => _client.delete(
+        ApiConfig.uri(path),
+        headers: headers,
+        body: body != null ? jsonEncode(body) : null,
+      ),
+    );
   }
 
   Future<dynamic> _send(Future<http.Response> Function() request) async {
