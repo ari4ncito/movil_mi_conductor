@@ -7,7 +7,8 @@ class ApiConfig {
   static String get _fallbackUrl {
     if (kIsWeb) return 'http://localhost:3000/api';
     try {
-      if (Platform.isAndroid) return 'http://10.0.2.2:3000/api';
+      // Con 'adb reverse tcp:3000 tcp:3000', localhost:3000 en el celular apunta directo a la PC
+      if (Platform.isAndroid) return 'http://localhost:3000/api';
     } catch (_) {}
     return 'http://localhost:3000/api';
   }
