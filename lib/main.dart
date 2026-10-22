@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 
 import 'screens/auth/auth_gate.dart';
 import 'screens/auth/reset_password_screen.dart';
+import 'services/fcm_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicialización centralizada de Firebase y notificaciones push
+  await FcmService().inicializar();
+
   runApp(const MyApp());
 }
 
@@ -34,6 +40,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: FcmService.navigatorKey,
+      scaffoldMessengerKey: FcmService.scaffoldMessengerKey,
       title: 'Mi Conductor',
 
       theme: ThemeData(

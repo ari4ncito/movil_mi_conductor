@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../client/services/request_ride_screen.dart';
 import '../client/vehicles/my_vehicles_screen.dart';
+import '../shared/notifications_screen.dart';
 import 'client_history_screen.dart';
 import 'client_profile_screen.dart';
 
@@ -191,6 +192,22 @@ class _ClientSectionState extends State<ClientSection> {
             ),
         ],
       ),
+      actions: [
+        if (!widget.isGuest)
+          IconButton(
+            icon: const Icon(Icons.notifications_none, color: AppColors.white),
+            tooltip: 'Notificaciones',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(),
+                ),
+              );
+            },
+          ),
+        const SizedBox(width: 8),
+      ],
     );
   }
 
