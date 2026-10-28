@@ -167,6 +167,33 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
     }
   }
 
+  Future<void> _recalcularRutaDesvio() async {
+    try {
+      final detourLat = (_startPoint.latitude + _endPoint.latitude) / 2 + 0.007;
+      final detourLng = (_startPoint.longitude + _endPoint.longitude) / 2 + 0.007;
+
+      final url =
+          'http://router.project-osrm.org/route/v1/driving/,;$detourLng,$detourLat;,?overview=full&geometries=geojson';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['routes'] != null && data['routes'].isNotEmpty) {
+          final geometry = data['routes'][0]['geometry'];
+          final List coordinates = geometry['coordinates'];
+          if (mounted) {
+            setState(() {
+              _routePoints = coordinates
+                  .map((coord) => LatLng(coord[1], coord[0]))
+                  .toList();
+            });
+            _fitMapToRoute();
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   void _fitMapToRoute() {
     if (_routePoints.isNotEmpty) {
       final bounds = LatLngBounds.fromPoints(_routePoints);

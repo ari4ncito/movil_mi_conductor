@@ -32,47 +32,47 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
   XFile? _photoFile;
   final ImagePicker _picker = ImagePicker();
   bool _isCreating = false;
+  bool _cambiarRuta = false;
   late final NovedadService _novedadService =
       widget.novedadService ?? NovedadService();
 
   final List<String> _novelties = [
+    'Choque / Accidente',
+    'Incidente de salud',
     'Tráfico pesado',
-    'Accidente en la ruta',
-    'Vehículo averiado',
-    'Problema con el cliente',
-    'Otro',
+    'Problemas mecánicos',
   ];
 
   static const Map<String, Map<String, String>> _noveltyConfig = {
+    'Choque / Accidente': {
+      'tipo': 'VIAL',
+      'severidad': 'CRITICA',
+      'titulo': 'Choque vehicular en la ruta',
+      'defaultDesc': 'Se presentó una colisión o choque vehicular durante el trayecto.',
+    },
+    'Incidente de salud': {
+      'tipo': 'SALUD',
+      'severidad': 'CRITICA',
+      'titulo': 'Incidente de salud o emergencia',
+      'defaultDesc': 'Se presentó una eventualidad o emergencia médica que requiere atención.',
+    },
     'Tráfico pesado': {
       'tipo': 'VIAL',
       'severidad': 'MEDIA',
-      'titulo': 'Tráfico pesado en la ruta',
-      'defaultDesc': 'Tráfico pesado en la vía que genera demoras en el servicio.',
+      'titulo': 'Tráfico pesado o congestión',
+      'defaultDesc': 'Tráfico pesado y congestión vial que genera demoras en el servicio.',
     },
-    'Accidente en la ruta': {
-      'tipo': 'VIAL',
-      'severidad': 'ALTA',
-      'titulo': 'Accidente vehicular en la vía',
-      'defaultDesc': 'Se presentó un accidente de tránsito en el trayecto de la ruta.',
-    },
-    'Vehículo averiado': {
+    'Problemas mecánicos': {
       'tipo': 'MECANICA',
       'severidad': 'ALTA',
-      'titulo': 'Avería mecánica del vehículo',
-      'defaultDesc': 'El vehículo presenta fallas mecánicas imprevistas durante el recorrido.',
+      'titulo': 'Falla o problema mecánico',
+      'defaultDesc': 'El vehículo presenta fallas o averías mecánicas imprevistas.',
     },
-    'Problema con el cliente': {
-      'tipo': 'CLIENTE',
+    'Cambio de ruta': {
+      'tipo': 'VIAL',
       'severidad': 'MEDIA',
-      'titulo': 'Novedad con el cliente',
-      'defaultDesc': 'Se presentó un inconveniente o eventualidad con el cliente asignado.',
-    },
-    'Otro': {
-      'tipo': 'OTROS',
-      'severidad': 'BAJA',
-      'titulo': 'Novedad general en el servicio',
-      'defaultDesc': 'Reporte de novedad imprevista reportada por el conductor.',
+      'titulo': 'Aviso de cambio de ruta o desvío',
+      'defaultDesc': 'El conductor toma un desvío o ruta alternativa por imprevistos en la vía.',
     },
   };
 
@@ -159,7 +159,11 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
       finalDesc = finalDesc.substring(0, 1000);
     }
 
-    final titulo = config['titulo']!;
+    String titulo = config['titulo']!;
+    if (_cambiarRuta) {
+      titulo = '$titulo (Con cambio de ruta)';
+      finalDesc = '$finalDesc\n[AVISO DE DESVÍO]: El conductor toma una ruta alternativa debido a este incidente.';
+    }
     final tipo = config['tipo']!;
     final severidad = config['severidad']!;
 
@@ -194,7 +198,7 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Novedad reportada exitosamente.')),
       );
-      Navigator.pop(context);
+      Navigator.pop(context, {'cambioRuta': _cambiarRuta, 'motivo': _selectedNovelty});
     } on ApiException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -346,6 +350,77 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
                   ),
                 );
               }),
+              const SizedBox(height: 8),
+
+              // Tarjeta interactiva de cambio de ruta
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: _cambiarRuta ? const Color(0xFFEBF7F2) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _cambiarRuta ? const Color(0xFF2E7D5B) : Colors.grey[300]!,
+                    width: _cambiarRuta ? 1.5 : 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _cambiarRuta ? const Color(0xFF2E7D5B) : Colors.grey[200],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.alt_route_rounded,
+                        color: _cambiarRuta ? Colors.white : Colors.grey[700],
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '¿Requiere cambio de ruta?',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _cambiarRuta
+                                ? 'Se avisará al cliente y se trazará una ruta alterna.'
+                                : 'Activa si este incidente obliga a tomar un desvío.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _cambiarRuta ? const Color(0xFF1B5E20) : Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: _cambiarRuta,
+                      activeColor: const Color(0xFF2E7D5B),
+                      onChanged: (val) {
+                        setState(() => _cambiarRuta = val);
+                      },
+                    ),
+                  ],
+                ),
+              ),
 
               const SizedBox(height: 20),
 
