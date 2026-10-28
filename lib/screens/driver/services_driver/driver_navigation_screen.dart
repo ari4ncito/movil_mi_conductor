@@ -8,6 +8,7 @@ import '../../../services/auth_service.dart';
 import 'driver_arrived_screen.dart';
 import 'driver_report_novelty_screen.dart';
 import 'driver_vehicle_delivery_verification.dart';
+import '../../../widgets/report_novelty_modal.dart';
 
 // ─────────────────────────────────────────────
 // Paleta de la app: azul petróleo, escalas de azul oscuro,
@@ -45,7 +46,10 @@ class DriverNavigationScreen extends StatefulWidget {
 
 class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
   List<LatLng> _routePoints = [];
+  List<LatLng> _originalRoutePoints = [];
   bool _isLoadingRoute = true;
+  bool _isDetourActive = false;
+  String? _detourReason;
   bool _isCardMinimized = false;
   final MapController _mapController = MapController();
   
@@ -155,14 +159,11 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
         widget.solicitud?.conductorData?['id'];
 
     if (!context.mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => DriverReportNoveltyScreen(
-          solicitudId: widget.solicitud?.id,
-          conductorId: conductorId?.toString(),
-          usuarioId: usuarioId,
-        ),
-      ),
+    await showReportNoveltyModal(
+      context,
+      solicitudId: widget.solicitud?.id,
+      conductorId: conductorId?.toString(),
+      usuarioId: usuarioId,
     );
   }
 
