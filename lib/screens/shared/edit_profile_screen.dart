@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/usuario_service.dart';
 import '../../services/cliente_service.dart';
+import '../../utils/validators.dart';
 
 class AppColors {
   static const Color background = Color(0xFFF2F5F6);
@@ -34,6 +35,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _telefonoController = TextEditingController();
   final _direccionController = TextEditingController();
 
+  // Password change controllers
+  final _passwordActualController = TextEditingController();
+  final _nuevaPasswordController = TextEditingController();
+  final _confirmarPasswordController = TextEditingController();
+
   String _tipoDocumento = 'CC';
   String _rol = '';
   String? _usuarioId;
@@ -41,10 +47,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _cambiarPassword = false;
+  bool _obscurePasswordActual = true;
+  bool _obscureNuevaPassword = true;
+  bool _obscureConfirmarPassword = true;
+
+  String? _passwordActualError;
+  String? _nuevaPasswordError;
+  String? _confirmarPasswordError;
 
   final List<Map<String, String>> _tiposDocumento = const [
     {'value': 'CC', 'label': 'Cédula de Ciudadanía (CC)'},
+    {'value': 'TI', 'label': 'Tarjeta de Identidad (TI)'},
     {'value': 'CE', 'label': 'Cédula de Extranjería (CE)'},
+    {'value': 'PPT', 'label': 'Permiso por Protección Temporal (PPT)'},
+    {'value': 'PA', 'label': 'Pasaporte'},
     {'value': 'PASAPORTE', 'label': 'Pasaporte'},
     {'value': 'PEP', 'label': 'PEP'},
     {'value': 'NIT', 'label': 'NIT'},
@@ -64,6 +81,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _correoController.dispose();
     _telefonoController.dispose();
     _direccionController.dispose();
+    _passwordActualController.dispose();
+    _nuevaPasswordController.dispose();
+    _confirmarPasswordController.dispose();
     super.dispose();
   }
 
@@ -135,7 +155,43 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _guardarPerfil() async {
-    if (!_formKey.currentState!.validate()) {
+    if (_isSaving) return;
+
+    final formValid = _formKey.currentState!.validate();
+
+    if (_cambiarPassword) {
+      final currentErr = AuthValidators.validateCurrentPassword(
+        _passwordActualController.text,
+      );
+      final newErr = AuthValidators.validateNewPassword(
+        _nuevaPasswordController.text,
+      );
+      final confirmErr = AuthValidators.validateConfirmPassword(
+        _confirmarPasswordController.text,
+        _nuevaPasswordController.text,
+      );
+
+      setState(() {
+        _passwordActualError = currentErr;
+        _nuevaPasswordError = newErr;
+        _confirmarPasswordError = confirmErr;
+      });
+
+      if (!formValid ||
+          currentErr != null ||
+          newErr != null ||
+          confirmErr != null) {
+        final firstPasswordError =
+            currentErr ?? newErr ?? confirmErr ?? 'Por favor revisa los campos señalados.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(firstPasswordError),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+    } else if (!formValid) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Por favor revisa los campos señalados.'),
@@ -158,7 +214,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // 1. Actualizar usuario principal
+      // 1. Si se solicitó cambio de contraseña, verificar y actualizar primero en el backend autenticado
+      if (_cambiarPassword) {
+        await AuthService.changePassword(
+          currentPassword: _passwordActualController.text,
+          newPassword: _nuevaPasswordController.text,
+          confirmPassword: _confirmarPasswordController.text,
+        );
+      }
+
+      // 2. Actualizar usuario principal (sin enviar password sin verificar)
       final datosUsuario = {
         'nombre': _nombreController.text.trim(),
         'apellido': _apellidoController.text.trim(),
@@ -170,7 +235,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       await UsuarioService.actualizar(_usuarioId!, datosUsuario);
 
-      // 2. Si es Cliente, actualizar dirección en Cliente
+      // 3. Si es Cliente, actualizar dirección en Cliente
       if (_rol == 'CLIENTE' && _clienteId != null && _direccionController.text.trim().isNotEmpty) {
         try {
           await ClienteService.update(_clienteId!, {
@@ -181,25 +246,51 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
       }
 
-
-
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 10),
-              Text('Perfil actualizado correctamente.'),
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _cambiarPassword
+                      ? 'Contraseña y perfil actualizados correctamente.'
+                      : 'Perfil actualizado correctamente.',
+                ),
+              ),
             ],
           ),
-          backgroundColor: Color(0xFF12566B),
+          backgroundColor: const Color(0xFF12566B),
           behavior: SnackBarBehavior.floating,
         ),
       );
 
       Navigator.of(context).pop(true);
+    } on AuthApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _passwordActualError =
+            e.fieldErrors['currentPassword'] ?? _passwordActualError;
+        _nuevaPasswordError =
+            e.fieldErrors['newPassword'] ?? _nuevaPasswordError;
+        _confirmarPasswordError =
+            e.fieldErrors['confirmPassword'] ?? _confirmarPasswordError;
+        if (e.message.toLowerCase().contains('contraseña actual')) {
+          _passwordActualError = e.message;
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
@@ -369,9 +460,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ],
                       ),
 
+                      const SizedBox(height: 20),
 
-
-
+                      // Sección: Cambiar Contraseña (Opcional)
+                      _buildSecurityCard(),
 
                       const SizedBox(height: 32),
 
@@ -668,7 +760,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: _tiposDocumento.any((t) => t['value'] == _tipoDocumento) ? _tipoDocumento : 'CC',
+          initialValue: _tiposDocumento.any((t) => t['value'] == _tipoDocumento) ? _tipoDocumento : 'CC',
           style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.assignment_ind_outlined, color: AppColors.slateGray, size: 20),
@@ -695,6 +787,202 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               setState(() => _tipoDocumento = val);
             }
           },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSecurityCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.borderGray),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.petrolDark.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.petrolPale,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.lock_outline_rounded, color: AppColors.petrolBase, size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Seguridad (Opcional)',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              Switch(
+                value: _cambiarPassword,
+                activeThumbColor: AppColors.accentOrange,
+                onChanged: (val) {
+                  setState(() {
+                    _cambiarPassword = val;
+                    if (!val) {
+                      _passwordActualController.clear();
+                      _nuevaPasswordController.clear();
+                      _confirmarPasswordController.clear();
+                      _passwordActualError = null;
+                      _nuevaPasswordError = null;
+                      _confirmarPasswordError = null;
+                    }
+                  });
+                },
+              ),
+            ],
+          ),
+          if (_cambiarPassword) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Ingresa tu contraseña actual y tu nueva contraseña para actualizarla:',
+              style: TextStyle(fontSize: 13, color: AppColors.slateGray),
+            ),
+            const SizedBox(height: 14),
+            _buildPasswordField(
+              controller: _passwordActualController,
+              label: 'Contraseña Actual',
+              hint: 'Ingresa tu contraseña actual',
+              obscureText: _obscurePasswordActual,
+              errorText: _passwordActualError,
+              onToggleVisibility: () {
+                setState(() => _obscurePasswordActual = !_obscurePasswordActual);
+              },
+              onChanged: (_) {
+                if (_passwordActualError != null) {
+                  setState(() => _passwordActualError = null);
+                }
+              },
+            ),
+            const SizedBox(height: 14),
+            _buildPasswordField(
+              controller: _nuevaPasswordController,
+              label: 'Nueva Contraseña',
+              hint: 'Mínimo 6 caracteres',
+              obscureText: _obscureNuevaPassword,
+              errorText: _nuevaPasswordError,
+              onToggleVisibility: () {
+                setState(() => _obscureNuevaPassword = !_obscureNuevaPassword);
+              },
+              onChanged: (val) {
+                setState(() {
+                  _nuevaPasswordError =
+                      val.isEmpty ? null : AuthValidators.validateNewPassword(val);
+                  if (_confirmarPasswordController.text.isNotEmpty) {
+                    _confirmarPasswordError = AuthValidators.validateConfirmPassword(
+                      _confirmarPasswordController.text,
+                      val,
+                    );
+                  }
+                });
+              },
+            ),
+            const SizedBox(height: 14),
+            _buildPasswordField(
+              controller: _confirmarPasswordController,
+              label: 'Confirmar Nueva Contraseña',
+              hint: 'Repite la contraseña',
+              obscureText: _obscureConfirmarPassword,
+              errorText: _confirmarPasswordError,
+              onToggleVisibility: () {
+                setState(() => _obscureConfirmarPassword = !_obscureConfirmarPassword);
+              },
+              onChanged: (val) {
+                setState(() {
+                  _confirmarPasswordError = val.isEmpty
+                      ? null
+                      : AuthValidators.validateConfirmPassword(
+                          val,
+                          _nuevaPasswordController.text,
+                        );
+                });
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required bool obscureText,
+    required VoidCallback onToggleVisibility,
+    String? errorText,
+    ValueChanged<String>? onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          onChanged: onChanged,
+          style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: Color(0xFF9EACB2), fontSize: 14),
+            errorText: errorText,
+            prefixIcon: const Icon(Icons.lock_outline, color: AppColors.slateGray, size: 20),
+            suffixIcon: IconButton(
+              icon: Icon(
+                obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                color: AppColors.slateGray,
+                size: 20,
+              ),
+              onPressed: onToggleVisibility,
+            ),
+            filled: true,
+            fillColor: const Color(0xFFF7FAFA),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.borderGray),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.petrolBase, width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.red.shade400),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.red.shade600, width: 1.5),
+            ),
+          ),
         ),
       ],
     );
