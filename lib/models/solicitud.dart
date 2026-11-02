@@ -65,6 +65,26 @@ class Solicitud {
     return cliente ?? 'Cliente asignado';
   }
 
+  String get conductorNombre {
+    if (conductorData != null) {
+      final user = conductorData!['usuario'];
+      if (user is Map) {
+        final nombre = user['nombre']?.toString() ?? '';
+        final apellido = user['apellido']?.toString() ?? '';
+        final full = ('$nombre $apellido').trim();
+        if (full.isNotEmpty) return full;
+      }
+      final nombre = conductorData!['nombre']?.toString() ?? '';
+      final apellido = conductorData!['apellido']?.toString() ?? '';
+      final full = ('$nombre $apellido').trim();
+      if (full.isNotEmpty) return full;
+    }
+    if (conductorAsignado != null && conductorAsignado!.isNotEmpty) {
+      return 'Conductor Asignado';
+    }
+    return 'Sin conductor asignado';
+  }
+
   factory Solicitud.fromJson(Map<String, dynamic> json) => Solicitud(
     id: _string(json['_id'] ?? json['id']),
     codigo: _string(json['codigo']),

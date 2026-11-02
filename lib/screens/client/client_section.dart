@@ -146,19 +146,19 @@ class _ClientSectionState extends State<ClientSection> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  widget.isGuest ? 'Modo Invitado' : 'Bienvenido',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 17,
-                    letterSpacing: 0.2,
+                const Text(
+                  'MI CONDUCTOR',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    letterSpacing: 1.2,
                     color: AppColors.white,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   widget.isGuest
-                      ? 'Explorando sin cuenta'
+                      ? 'Modo Invitado'
                       : '¡Qué gusto tenerte de vuelta!',
                   style: TextStyle(
                     fontSize: 11.5,

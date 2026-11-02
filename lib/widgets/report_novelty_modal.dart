@@ -6,16 +6,19 @@ import '../services/auth_service.dart';
 import '../services/cloudinary_service.dart';
 import '../services/http_client.dart';
 import '../services/novedad_service.dart';
+import '../services/solicitud_service.dart';
 import 'xfile_image_widget.dart';
 
 /// Función auxiliar para desplegar el modal de reporte de novedades directamente
 /// sobre la pantalla de viaje o navegación sin perder el contexto.
-/// Retorna un mapa con el resultado: {'success': bool, 'cambioRuta': bool, 'motivo': String, ...}
+/// Retorna un mapa con el resultado:
+/// {'success': bool, 'cambioRuta': bool, 'nuevaDireccion': String?, 'motivo': String, ...}
 Future<Map<String, dynamic>?> showReportNoveltyModal(
   BuildContext context, {
   String? solicitudId,
   String? conductorId,
   String? usuarioId,
+  String? destinoActual,
 }) {
   return showModalBottomSheet<Map<String, dynamic>>(
     context: context,
@@ -25,6 +28,7 @@ Future<Map<String, dynamic>?> showReportNoveltyModal(
       solicitudId: solicitudId,
       conductorId: conductorId,
       usuarioId: usuarioId,
+      destinoActual: destinoActual,
     ),
   );
 }
@@ -33,12 +37,14 @@ class ReportNoveltyModal extends StatefulWidget {
   final String? solicitudId;
   final String? conductorId;
   final String? usuarioId;
+  final String? destinoActual;
 
   const ReportNoveltyModal({
     super.key,
     this.solicitudId,
     this.conductorId,
     this.usuarioId,
+    this.destinoActual,
   });
 
   @override
@@ -47,12 +53,14 @@ class ReportNoveltyModal extends StatefulWidget {
 
 class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
   final NovedadService _novedadService = NovedadService();
+  final SolicitudService _solicitudService = SolicitudService();
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _detailsController = TextEditingController();
+  final TextEditingController _newAddressController = TextEditingController();
 
   // Novedades normalizadas (incidentes puros)
   String _selectedKey = 'choque';
-  bool _cambiarRuta = false; // Toggle para desviar o recalcular ruta
+  bool _cambiarRuta = false; // Toggle para desviar o cambiar destino
   XFile? _photoFile;
   bool _isSubmitting = false;
 
@@ -98,6 +106,7 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
   @override
   void dispose() {
     _detailsController.dispose();
+    _newAddressController.dispose();
     super.dispose();
   }
 
@@ -190,10 +199,23 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
         : selectedConfig['defaultDesc'] as String;
 
     String finalTitle = selectedConfig['titulo'] as String;
+    String? nuevaDireccion;
+
     if (_cambiarRuta) {
-      finalTitle = '$finalTitle (Con cambio de ruta)';
+      nuevaDireccion = _newAddressController.text.trim();
+      if (nuevaDireccion.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Por favor ingresa la nueva dirección de destino.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+      finalTitle = '$finalTitle (Cambio a: $nuevaDireccion)';
       finalDescription =
-          '$finalDescription\n[AVISO DE DESVÍO]: El conductor toma una ruta alternativa debido a este incidente.';
+          '$finalDescription\n[NUEVA DIRECCIÓN / DESTINO]: $nuevaDireccion';
     }
 
     final solId = isValidObjectId(widget.solicitudId)
@@ -206,6 +228,17 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
     setState(() => _isSubmitting = true);
 
     try {
+      // 1. Si hay cambio de ruta y solicitud activa, actualizar destino en backend
+      if (_cambiarRuta && solId != null && nuevaDireccion != null) {
+        try {
+          await _solicitudService.actualizarDestino(solId, nuevaDireccion);
+          debugPrint('Destino de solicitud actualizado a: $nuevaDireccion');
+        } catch (updateErr) {
+          debugPrint('Aviso al actualizar destino de solicitud: $updateErr');
+        }
+      }
+
+      // 2. Subir foto si existe
       String? fotoEvidenciaUrl;
       if (_photoFile != null) {
         try {
@@ -218,6 +251,7 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
         }
       }
 
+      // 3. Crear novedad en el centro de control
       await _novedadService.crearNovedad(
         Novedad(
           titulo: finalTitle,
@@ -237,12 +271,13 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
       Navigator.of(context).pop<Map<String, dynamic>>({
         'success': true,
         'cambioRuta': _cambiarRuta,
+        'nuevaDireccion': nuevaDireccion,
         'motivo': selectedConfig['label'] as String,
         'novedadKey': _selectedKey,
       });
 
       final mensajeExito = _cambiarRuta
-          ? 'Novedad reportada. Se activó el cambio de ruta y se notificó al cliente.'
+          ? 'Novedad reportada. Destino actualizado a "$nuevaDireccion" y notificado al cliente.'
           : 'Novedad reportada al centro de control exitosamente.';
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -441,8 +476,8 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
                         const SizedBox(height: 2),
                         Text(
                           _cambiarRuta
-                              ? 'Se recalculará la ruta en tu mapa y se notificará el desvío al cliente.'
-                              : 'Activa si este incidente obliga a tomar un desvío o ruta alternativa.',
+                              ? 'Se solicitará la nueva dirección para recalcular la ruta.'
+                              : 'Activa si este incidente obliga a cambiar de destino o desviar.',
                           style: TextStyle(
                             fontSize: 11.5,
                             color: _cambiarRuta ? const Color(0xFF1B5E20) : Colors.grey[600],
@@ -455,7 +490,6 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
                   Switch.adaptive(
                     value: _cambiarRuta,
                     activeTrackColor: const Color(0xFF2E7D5B),
-                    activeColor: const Color(0xFF2E7D5B),
                     onChanged: (val) {
                       setState(() => _cambiarRuta = val);
                     },
@@ -463,6 +497,85 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
                 ],
               ),
             ),
+
+            // CAMPO DE NUEVA DIRECCIÓN (CUANDO SE ACTIVA EL CAMBIO DE RUTA)
+            if (_cambiarRuta) ...[
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF2E7D5B), width: 1.2),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.edit_location_alt_rounded,
+                          size: 20,
+                          color: Color(0xFF2E7D5B),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'NUEVA DIRECCIÓN DE DESTINO',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.6,
+                            color: Color(0xFF1B5E20),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (widget.destinoActual != null && widget.destinoActual!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Destino actual: ${widget.destinoActual}',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: Colors.grey[700],
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _newAddressController,
+                      decoration: InputDecoration(
+                        hintText: 'Ej: Carrera 43A # 1-50, Medellín',
+                        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+                        filled: true,
+                        fillColor: Colors.white,
+                        prefixIcon: const Icon(Icons.location_on, color: Color(0xFF2E7D5B), size: 20),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF2E7D5B)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.green[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF2E7D5B), width: 1.8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Se recalculará la ruta a este nuevo punto y se actualizará en la app del cliente.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF2E7D5B)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             const SizedBox(height: 18),
 
@@ -483,7 +596,7 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
               maxLines: 2,
               decoration: InputDecoration(
                 hintText: _cambiarRuta
-                    ? 'Ej: Vía cerrada por este incidente, tomando calle alterna...'
+                    ? 'Motivo del cambio de ruta (vía cerrada, obras, etc.)...'
                     : 'Detalles adicionales sobre lo sucedido...',
                 hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13.5),
                 filled: true,
@@ -639,7 +752,7 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
                           const SizedBox(width: 8),
                           Text(
                             _cambiarRuta
-                                ? 'Reportar Novedad y Cambiar Ruta'
+                                ? 'Reportar y Cambiar Destino'
                                 : 'Enviar Reporte',
                             style: const TextStyle(
                               fontSize: 16,

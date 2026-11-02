@@ -46,6 +46,8 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
   Timer? _statusPollingTimer;
   final SolicitudService _solicitudService = SolicitudService();
   late Solicitud? _currentSolicitud;
+  bool _isDetourActive = false;
+  String? _lastKnownDestino;
 
   @override
   void initState() {
@@ -93,6 +95,7 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
   }
 
   Future<void> _initializeMapAndRoute() async {
+    _lastKnownDestino = widget.solicitud?.destino;
     // 1. Intentar obtener coordenadas reales
     final originAddress = widget.solicitud?.origen;
     final destAddress = widget.solicitud?.destino;
@@ -136,7 +139,7 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
   Future<void> _fetchRoute() async {
     try {
       final url =
-          'http://router.project-osrm.org/route/v1/driving/${_startPoint.longitude},${_startPoint.latitude};${_endPoint.longitude},${_endPoint.latitude}?overview=full&geometries=geojson';
+          'https://router.project-osrm.org/route/v1/driving/${_startPoint.longitude},${_startPoint.latitude};${_endPoint.longitude},${_endPoint.latitude}?overview=full&geometries=geojson';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
@@ -167,13 +170,35 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
     }
   }
 
+  Future<void> _actualizarRutaNuevoDestino(String nuevoDestino) async {
+    try {
+      final newCoords = await _geocodeAddress(nuevoDestino);
+      if (newCoords != null && mounted) {
+        setState(() {
+          _endPoint = newCoords;
+          _isLoadingRoute = true;
+        });
+      } else {
+        final offsetLat = _startPoint.latitude + (_endPoint.latitude - _startPoint.latitude) * 0.8 + 0.007;
+        final offsetLng = _startPoint.longitude + (_endPoint.longitude - _startPoint.longitude) * 0.8 - 0.007;
+        if (mounted) {
+          setState(() {
+            _endPoint = LatLng(offsetLat, offsetLng);
+            _isLoadingRoute = true;
+          });
+        }
+      }
+      await _fetchRoute();
+    } catch (_) {}
+  }
+
   Future<void> _recalcularRutaDesvio() async {
     try {
       final detourLat = (_startPoint.latitude + _endPoint.latitude) / 2 + 0.007;
       final detourLng = (_startPoint.longitude + _endPoint.longitude) / 2 + 0.007;
 
       final url =
-          'http://router.project-osrm.org/route/v1/driving/,;$detourLng,$detourLat;,?overview=full&geometries=geojson';
+          'https://router.project-osrm.org/route/v1/driving/,;$detourLng,$detourLat;,?overview=full&geometries=geojson';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {

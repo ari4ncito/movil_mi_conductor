@@ -5,6 +5,7 @@ import '../../../services/auth_service.dart';
 import '../../../services/cloudinary_service.dart';
 import '../../../services/http_client.dart';
 import '../../../services/novedad_service.dart';
+import '../../../services/solicitud_service.dart';
 import '../../../widgets/xfile_image_widget.dart';
 
 class DriverReportNoveltyScreen extends StatefulWidget {
@@ -33,6 +34,8 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isCreating = false;
   bool _cambiarRuta = false;
+  final TextEditingController _newAddressController = TextEditingController();
+  final SolicitudService _solicitudService = SolicitudService();
   late final NovedadService _novedadService =
       widget.novedadService ?? NovedadService();
 
@@ -79,6 +82,7 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
   @override
   void dispose() {
     _detailsController.dispose();
+    _newAddressController.dispose();
     super.dispose();
   }
 
@@ -160,14 +164,32 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
     }
 
     String titulo = config['titulo']!;
+    String? nuevaDireccion;
     if (_cambiarRuta) {
-      titulo = '$titulo (Con cambio de ruta)';
-      finalDesc = '$finalDesc\n[AVISO DE DESVÍO]: El conductor toma una ruta alternativa debido a este incidente.';
+      nuevaDireccion = _newAddressController.text.trim();
+      if (nuevaDireccion.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Por favor ingresa la nueva dirección de destino.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+      titulo = '$titulo (Cambio a: $nuevaDireccion)';
+      finalDesc = '$finalDesc\n[NUEVA DIRECCIÓN / DESTINO]: $nuevaDireccion';
     }
     final tipo = config['tipo']!;
     final severidad = config['severidad']!;
 
     setState(() => _isCreating = true);
+    if (_cambiarRuta && solId != null && nuevaDireccion != null) {
+      try {
+        await _solicitudService.actualizarDestino(solId, nuevaDireccion);
+      } catch (updateErr) {
+        debugPrint('Aviso al actualizar destino en solicitud: $updateErr');
+      }
+    }
     try {
       String? fotoEvidenciaUrl;
       if (_photoFile != null) {
@@ -198,7 +220,7 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Novedad reportada exitosamente.')),
       );
-      Navigator.pop(context, {'cambioRuta': _cambiarRuta, 'motivo': _selectedNovelty});
+      Navigator.pop(context, {'cambioRuta': _cambiarRuta, 'nuevaDireccion': nuevaDireccion, 'motivo': _selectedNovelty});
     } on ApiException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -421,6 +443,63 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
                   ],
                 ),
               ),
+
+              if (_cambiarRuta) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF2E7D5B), width: 1.2),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.edit_location_alt_rounded, size: 20, color: Color(0xFF2E7D5B)),
+                          SizedBox(width: 8),
+                          Text(
+                            'NUEVA DIRECCIÓN DE DESTINO',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.6,
+                              color: Color(0xFF1B5E20),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _newAddressController,
+                        decoration: InputDecoration(
+                          hintText: 'Ej: Carrera 43A # 1-50, Medellín',
+                          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: const Icon(Icons.location_on, color: Color(0xFF2E7D5B), size: 20),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFF2E7D5B)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.green[300]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFF2E7D5B), width: 1.8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 20),
 
