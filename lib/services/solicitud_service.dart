@@ -9,11 +9,14 @@ class SolicitudService {
 
   Future<List<Solicitud>> listar({
     String? clienteId,
+    String? correoCliente,
     String? conductorId,
     String? estado,
   }) async {
     final query = <String, String>{
       if (_validId(clienteId)) 'cliente': clienteId!,
+      if (correoCliente != null && correoCliente.trim().isNotEmpty)
+        'correoCliente': correoCliente.trim().toLowerCase(),
       if (_validId(conductorId)) 'conductor': conductorId!,
       if (estado != null && estado.trim().isNotEmpty) 'estado': estado,
     };
@@ -91,6 +94,18 @@ class SolicitudService {
 
   Future<Solicitud> actualizarSolicitud(String id, Solicitud solicitud) =>
       actualizar(id, solicitud);
+
+  Future<Solicitud> actualizarDestino(String id, String nuevoDestino) async {
+    _requireId(id);
+    return Solicitud.fromJson(
+      _map(
+        await client.put(
+          '/solicitudes/$id',
+          body: {'destino': nuevoDestino},
+        ),
+      ),
+    );
+  }
 
   List<Solicitud> _list(dynamic data) {
     final list = data is List

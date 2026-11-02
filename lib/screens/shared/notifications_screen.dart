@@ -40,9 +40,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         limit: 50,
         leida: _soloNoLeidas ? false : null,
       );
+
+      // Conservar y mostrar unicamente notificaciones de los ultimos 2 dias (48 horas)
+      final ahora = DateTime.now();
+      final limiteDosDias = ahora.subtract(const Duration(days: 2));
+      final itemsRecientes = items.where((n) {
+        final fecha = n.createdAt ?? n.updatedAt;
+        if (fecha == null) return true;
+        return fecha.isAfter(limiteDosDias);
+      }).toList();
+
       if (mounted) {
         setState(() {
-          _notificaciones = items;
+          _notificaciones = itemsRecientes;
           _isLoading = false;
         });
       }
@@ -193,6 +203,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       setState(() => _soloNoLeidas = true);
                       _cargarNotificaciones();
                     },
+                  ),
+                  const Spacer(),
+                  Row(
+                    children: [
+                      Icon(Icons.history_toggle_off_rounded, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Últimos 2 días',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

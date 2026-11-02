@@ -361,33 +361,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     );
   }
 
-  // Pequeño chip informativo decorativo (confianza / valor agregado)
-  Widget _trustChip(IconData icon, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.petrolPale.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 18, color: AppColors.petrol),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-                color: AppColors.slate,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -917,21 +890,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
 
               const SizedBox(height: 18),
 
-              // ---------------------------------------------
-              // Franja de confianza — detalle decorativo extra
-              // ---------------------------------------------
-              Row(
-                children: [
-                  _trustChip(Icons.shield_outlined, 'Pago\nSeguro'),
-                  const SizedBox(width: 10),
-                  _trustChip(
-                    Icons.verified_outlined,
-                    'Conductor\nVerificado',
-                  ),
-                  const SizedBox(width: 10),
-                  _trustChip(Icons.bolt_outlined, 'Llegada\nRápida'),
-                ],
-              ),
+
 
               const SizedBox(height: 12),
             ],

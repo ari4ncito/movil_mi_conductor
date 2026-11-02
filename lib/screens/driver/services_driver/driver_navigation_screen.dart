@@ -50,6 +50,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
   bool _isLoadingRoute = true;
   bool _isDetourActive = false;
   String? _detourReason;
+  String? _currentDestAddress;
   bool _isCardMinimized = false;
   final MapController _mapController = MapController();
   
@@ -65,8 +66,9 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
 
   Future<void> _initializeMapAndRoute() async {
     // 1. Intentar obtener coordenadas reales
+    _currentDestAddress ??= widget.solicitud?.destino;
     final originAddress = widget.solicitud?.origen;
-    final destAddress = widget.solicitud?.destino;
+    final destAddress = _currentDestAddress ?? widget.solicitud?.destino;
 
     if (originAddress != null && originAddress.isNotEmpty) {
       final startCoords = await _geocodeAddress(originAddress);
@@ -90,7 +92,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
       // Append Medellín, Colombia to improve geocoding accuracy
       final searchAddress = '$address, Medellín, Colombia';
       final url = 'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(searchAddress)}&format=json&limit=1';
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url), headers: {'User-Agent': 'MiConductorApp/1.0'});
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as List;
         if (data.isNotEmpty) {
@@ -108,7 +110,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
   Future<void> _fetchRoute() async {
     try {
       final url =
-          'http://router.project-osrm.org/route/v1/driving/${_startPoint.longitude},${_startPoint.latitude};${_endPoint.longitude},${_endPoint.latitude}?overview=full&geometries=geojson';
+          'https://router.project-osrm.org/route/v1/driving/${_startPoint.longitude},${_startPoint.latitude};${_endPoint.longitude},${_endPoint.latitude}?overview=full&geometries=geojson';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
@@ -120,6 +122,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
             _routePoints = coordinates
                 .map((coord) => LatLng(coord[1], coord[0]))
                 .toList();
+            _originalRoutePoints = List.from(_routePoints);
             _isLoadingRoute = false;
           });
           _fitMapToRoute();
@@ -159,12 +162,76 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
         widget.solicitud?.conductorData?['id'];
 
     if (!context.mounted) return;
-    await showReportNoveltyModal(
+    final result = await showReportNoveltyModal(
       context,
       solicitudId: widget.solicitud?.id,
       conductorId: conductorId?.toString(),
       usuarioId: usuarioId,
+      destinoActual: _currentDestAddress ?? widget.solicitud?.destino,
     );
+
+    if (result != null && result['cambioRuta'] == true) {
+      final nuevaDir = result['nuevaDireccion'] as String?;
+      final motivo = result['motivo'] as String? ?? 'Incidente en vía';
+      await _aplicarCambioDeRuta(nuevaDir, motivo);
+    }
+  }
+
+  Future<void> _aplicarCambioDeRuta(String? nuevaDireccion, String motivo) async {
+    if (nuevaDireccion == null || nuevaDireccion.trim().isEmpty) return;
+
+    setState(() {
+      _currentDestAddress = nuevaDireccion.trim();
+      _isDetourActive = true;
+      _detourReason = motivo;
+      _isLoadingRoute = true;
+    });
+
+    // 1. Geocodificar la nueva dirección
+    final newCoords = await _geocodeAddress(_currentDestAddress!);
+    if (newCoords != null && mounted) {
+      setState(() => _endPoint = newCoords);
+    } else {
+      final offsetLat = _startPoint.latitude + (_endPoint.latitude - _startPoint.latitude) * 0.8 + 0.007;
+      final offsetLng = _startPoint.longitude + (_endPoint.longitude - _startPoint.longitude) * 0.8 - 0.007;
+      if (mounted) {
+        setState(() => _endPoint = LatLng(offsetLat, offsetLng));
+      }
+    }
+
+    // 2. Trazar nueva ruta hacia el nuevo destino con OSRM
+    await _fetchRoute();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.alt_route_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Ruta cambiada hacia: $_currentDestAddress',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF12566B),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  void _restaurarRutaOriginal() {
+    setState(() {
+      _currentDestAddress = widget.solicitud?.destino;
+      _isDetourActive = false;
+      _detourReason = null;
+      _isLoadingRoute = true;
+    });
+    _initializeMapAndRoute();
   }
 
   @override
@@ -179,7 +246,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
     final vehicleDetails = [marca, modelo, placa, color].where((s) => s.toString().isNotEmpty).join(' · ');
 
     final originAddress = widget.solicitud?.origen ?? 'Punto de Origen';
-    final destAddress = widget.solicitud?.destino ?? 'Punto de Destino';
+    final destAddress = _currentDestAddress ?? widget.solicitud?.destino ?? 'Punto de Destino';
 
     return Scaffold(
       body: Stack(
@@ -201,8 +268,8 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
                   polylines: [
                     Polyline(
                       points: _routePoints,
-                      color: AppColors.petrolLight,
-                      strokeWidth: 5.0,
+                      color: _isDetourActive ? AppColors.accentOrange : AppColors.petrolLight,
+                      strokeWidth: _isDetourActive ? 5.5 : 5.0,
                     ),
                   ],
                 ),
@@ -345,37 +412,81 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
                     ],
                   ),
                 ),
+                if (_isDetourActive)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.petrolDark,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: AppColors.accentOrange,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.alt_route_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Nuevo destino: ${_currentDestAddress ?? "Cambio de ruta"}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  'Por ${_detourReason ?? "incidente en vía"} · Cliente notificado',
+                                  style: const TextStyle(
+                                    color: Color(0xFFCFD8DC),
+                                    fontSize: 11,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _restaurarRutaOriginal,
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFFFFB74D),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                            child: const Text('Restaurar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
 
-          // Icono del conductor en el mapa
-          Center(
-            child: Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.petrolLight, AppColors.petrolDark],
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.petrolBase.withAlpha(100),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.directions_car,
-                color: AppColors.white,
-                size: 40,
-              ),
-            ),
-          ),
+
 
           // Tarjeta inferior con info del cliente y viaje (Minimizable para ver el mapa)
           Align(
