@@ -212,7 +212,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
                       driver: solicitud.conductorNombre,
                       from: solicitud.origen ?? 'Origen no disponible',
                       to: solicitud.destino ?? 'Destino no disponible',
-                      rating: 0,
+                      rating: solicitud.calificacionConductor ?? 0,
                       status: solicitud.estado,
                     ),
                   ),
@@ -894,6 +894,85 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
                         ],
                       ),
                     ),
+
+                    if (solicitud.calificacionConductor != null || (solicitud.comentarioCliente != null && solicitud.comentarioCliente!.isNotEmpty)) ...[
+                      const SizedBox(height: 20),
+                      _buildDetailSectionTitle('TU CALIFICACIÓN AL CONDUCTOR', Icons.star_rate_rounded),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (solicitud.calificacionConductor != null)
+                              Row(
+                                children: [
+                                  for (int i = 0; i < 5; i++)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 2),
+                                      child: Icon(
+                                        Icons.star_rounded,
+                                        color: i < solicitud.calificacionConductor!
+                                            ? AppColors.accent
+                                            : Colors.grey[300],
+                                        size: 20,
+                                      ),
+                                    ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${solicitud.calificacionConductor}.0 estrellas',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.petrol,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            if (solicitud.comentarioCliente != null && solicitud.comentarioCliente!.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                '"${solicitud.comentarioCliente}"',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontStyle: FontStyle.italic,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    if (solicitud.comentarioConductor != null && solicitud.comentarioConductor!.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      _buildDetailSectionTitle('OBSERVACIÓN DEL CONDUCTOR', Icons.comment_rounded),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Text(
+                          '"${solicitud.comentarioConductor}"',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontStyle: FontStyle.italic,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

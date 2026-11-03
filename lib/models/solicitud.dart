@@ -18,6 +18,9 @@ class Solicitud {
   final Map<String, dynamic>? conductorData;
   final Map<String, dynamic>? vehiculoData;
   final Map<String, dynamic>? clienteData;
+  final int? calificacionConductor;
+  final String? comentarioCliente;
+  final String? comentarioConductor;
 
   const Solicitud({
     this.id,
@@ -39,6 +42,9 @@ class Solicitud {
     this.conductorData,
     this.vehiculoData,
     this.clienteData,
+    this.calificacionConductor,
+    this.comentarioCliente,
+    this.comentarioConductor,
   });
 
   String? get clienteId => cliente;
@@ -108,6 +114,9 @@ class Solicitud {
                    json['conductor'] is Map ? Map<String, dynamic>.from(json['conductor']) : null,
     vehiculoData: json['vehiculo'] is Map ? Map<String, dynamic>.from(json['vehiculo']) : null,
     clienteData: json['cliente'] is Map ? Map<String, dynamic>.from(json['cliente']) : null,
+    calificacionConductor: json['calificacionConductor'] is num ? (json['calificacionConductor'] as num).toInt() : null,
+    comentarioCliente: _string(json['comentarioCliente']),
+    comentarioConductor: _string(json['comentarioConductor']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -125,6 +134,9 @@ class Solicitud {
     if (prioridad != null) 'prioridad': prioridad,
     if (estado != null) 'estado': estado,
     if (motivoCancelacion != null) 'motivoCancelacion': motivoCancelacion,
+    if (calificacionConductor != null) 'calificacionConductor': calificacionConductor,
+    if (comentarioCliente != null) 'comentarioCliente': comentarioCliente,
+    if (comentarioConductor != null) 'comentarioConductor': comentarioConductor,
   };
 
   static String? _string(dynamic value) {
