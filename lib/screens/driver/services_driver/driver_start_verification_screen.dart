@@ -33,7 +33,14 @@ class DriverStartVerificationScreen extends StatefulWidget {
 
 class _DriverStartVerificationScreenState
     extends State<DriverStartVerificationScreen> {
-  int _rating = 0;
+  final TextEditingController _comentarioController = TextEditingController();
+  bool _isFinalizing = false;
+
+  @override
+  void dispose() {
+    _comentarioController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -150,39 +157,84 @@ class _DriverStartVerificationScreenState
                   ),
                 ],
               ),
-              const SizedBox(height: 40),
-              // Rating section
-              const Text(
-                'Califica el servicio',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+              const SizedBox(height: 32),
+              // Sección de comentario opcional del conductor sobre el cliente
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.borderGray, width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.petrolDark.withOpacity(0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (int i = 1; i <= 5; i++)
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _rating = i;
-                        });
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Icon(
-                          i <= _rating ? Icons.star : Icons.star_border,
-                          color: AppColors.accentOrange,
-                          size: 48,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          size: 20,
+                          color: AppColors.petrolBase,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Comentario al cliente (Opcional)',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Puedes dejar una observación o comentario opcional sobre el cliente o el viaje.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.slateGray,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _comentarioController,
+                      maxLines: 3,
+                      maxLength: 500,
+                      decoration: InputDecoration(
+                        hintText: 'Ej. Cliente puntual y respetuoso, viaje sin contratiempos...',
+                        hintStyle: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[400],
+                        ),
+                        filled: true,
+                        fillColor: AppColors.background,
+                        contentPadding: const EdgeInsets.all(14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: AppColors.borderGray),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: AppColors.borderGray),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: AppColors.petrolLight, width: 1.5),
                         ),
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
               // Finalizar viaje button
               SizedBox(
                 width: double.infinity,
@@ -203,14 +255,31 @@ class _DriverStartVerificationScreenState
                     ],
                   ),
                   child: ElevatedButton(
-                    onPressed: () async {
+                    onPressed: _isFinalizing ? null : () async {
+                      setState(() => _isFinalizing = true);
                       final solId = widget.solicitud?.id;
+                      final comentario = _comentarioController.text.trim();
                       if (solId != null && solId.isNotEmpty) {
                         try {
-                          await SolicitudService().completar(solId);
-                        } catch (_) {}
+                          await SolicitudService().completar(
+                            solId,
+                            comentarioConductor: comentario.isNotEmpty ? comentario : null,
+                          );
+                        } catch (e) {
+                          debugPrint('Aviso al completar solicitud: $e');
+                        }
                       }
-                      if (context.mounted) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              comentario.isNotEmpty
+                                  ? '¡Servicio finalizado! Comentario registrado correctamente.'
+                                  : '¡Servicio finalizado con éxito!',
+                            ),
+                            backgroundColor: const Color(0xFF2E7D32),
+                          ),
+                        );
                         Navigator.of(context).popUntil((route) => route.isFirst);
                       }
                     },
@@ -224,14 +293,23 @@ class _DriverStartVerificationScreenState
                         borderRadius: BorderRadius.circular(30),
                       ),
                     ),
-                    child: const Text(
-                      'Finalizar Servicio',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
+                    child: _isFinalizing
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Finalizar Servicio',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
                   ),
                 ),
               ),

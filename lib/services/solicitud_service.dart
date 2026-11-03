@@ -76,14 +76,43 @@ class SolicitudService {
   Future<Solicitud> cancelarSolicitud(String id, {String? motivo}) =>
       cancelar(id, motivo: motivo);
 
-  Future<Solicitud> completar(String id) async {
+  Future<Solicitud> completar(String id, {String? comentarioConductor}) async {
     _requireId(id);
     return Solicitud.fromJson(
-      _map(await client.patch('/solicitudes/$id/completar')),
+      _map(
+        await client.patch(
+          '/solicitudes/$id/completar',
+          body: {
+            if (comentarioConductor != null && comentarioConductor.trim().isNotEmpty)
+              'comentarioConductor': comentarioConductor.trim(),
+          },
+        ),
+      ),
     );
   }
 
-  Future<Solicitud> completarSolicitud(String id) => completar(id);
+  Future<Solicitud> completarSolicitud(String id, {String? comentarioConductor}) =>
+      completar(id, comentarioConductor: comentarioConductor);
+
+  Future<Solicitud> calificar(
+    String id, {
+    required int calificacion,
+    String? comentarioCliente,
+  }) async {
+    _requireId(id);
+    return Solicitud.fromJson(
+      _map(
+        await client.patch(
+          '/solicitudes/$id/calificar',
+          body: {
+            'calificacion': calificacion,
+            if (comentarioCliente != null && comentarioCliente.trim().isNotEmpty)
+              'comentarioCliente': comentarioCliente.trim(),
+          },
+        ),
+      ),
+    );
+  }
 
   Future<Solicitud> actualizar(String id, Solicitud solicitud) async {
     _requireId(id);

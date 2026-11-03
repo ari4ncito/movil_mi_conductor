@@ -155,8 +155,9 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                       pickup: solicitud.origen ?? 'Origen no disponible',
                       destination: solicitud.destino ?? 'Destino no disponible',
                       driver: solicitud.clienteNombre,
-                      driverRating: 5.0,
+                      driverRating: (solicitud.calificacionConductor ?? 5).toDouble(),
                       status: solicitud.estado,
+                      solicitud: solicitud,
                     ),
                   ),
                 ),
@@ -291,6 +292,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
     String driver,
     double driverRating, {
     String? status,
+    Solicitud? solicitud,
   }) {
     final (statusColor, statusBgColor, statusLabel) = _getStatusTheme(status);
 
@@ -456,6 +458,68 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                 ),
               ],
             ),
+            if (solicitud?.calificacionConductor != null || (solicitud?.comentarioCliente != null && solicitud!.comentarioCliente!.isNotEmpty)) ...[
+              const SizedBox(height: 18),
+              const Divider(),
+              const SizedBox(height: 12),
+              const Text(
+                'Calificación recibida del Cliente',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF12566B),
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (solicitud?.calificacionConductor != null)
+                Row(
+                  children: [
+                    for (int i = 0; i < 5; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 2),
+                        child: Icon(
+                          Icons.star_rounded,
+                          color: i < solicitud!.calificacionConductor!
+                              ? Colors.amber
+                              : Colors.grey[300],
+                          size: 20,
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${solicitud?.calificacionConductor}.0 estrellas',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ],
+                ),
+              if (solicitud?.comentarioCliente != null && solicitud!.comentarioCliente!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '"${solicitud?.comentarioCliente}"',
+                  style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black87, fontSize: 13),
+                ),
+              ],
+            ],
+
+            if (solicitud?.comentarioConductor != null && solicitud!.comentarioConductor!.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              const Divider(),
+              const SizedBox(height: 12),
+              const Text(
+                'Tu observación sobre el cliente / servicio',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF12566B),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '"${solicitud?.comentarioConductor}"',
+                style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black87, fontSize: 13),
+              ),
+            ],
+
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
@@ -487,6 +551,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
     required String driver,
     required double driverRating,
     String? status,
+    Solicitud? solicitud,
   }) {
     final (statusColor, statusBgColor, statusLabel) = _getStatusTheme(status);
 
@@ -531,6 +596,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   driver,
                   driverRating,
                   status: status,
+                  solicitud: solicitud,
                 ),
                 borderRadius: BorderRadius.circular(20),
                 child: Container(

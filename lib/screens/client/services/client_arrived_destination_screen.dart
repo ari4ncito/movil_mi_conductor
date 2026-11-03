@@ -1,3 +1,4 @@
+import '../../../services/solicitud_service.dart';
 import 'package:flutter/material.dart';
 import '../../../models/solicitud.dart';
 import '../client_section.dart';
@@ -267,7 +268,79 @@ class _ClientArrivedDestinationScreenState
                 ),
               ),
 
-              const SizedBox(height: 36),
+              const SizedBox(height: 24),
+
+              // Campo de comentario opcional del cliente para el conductor
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.borderGray),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.petrolDark.withOpacity(0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.rate_review_outlined, size: 18, color: AppColors.petrolBase),
+                        SizedBox(width: 8),
+                        Text(
+                          'Comentario para el conductor (Opcional)',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Comparte cómo fue tu experiencia o algún agradecimiento.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.slateGray,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _comentarioController,
+                      maxLines: 2,
+                      maxLength: 300,
+                      decoration: InputDecoration(
+                        hintText: 'Ej. Conductor muy profesional, puntual y amable...',
+                        hintStyle: TextStyle(fontSize: 12.5, color: Colors.grey[400]),
+                        filled: true,
+                        fillColor: AppColors.background,
+                        contentPadding: const EdgeInsets.all(12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.borderGray),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.borderGray),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.petrolLight, width: 1.5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 28),
 
               // Botón Finalizar Servicio
               SizedBox(
@@ -289,7 +362,23 @@ class _ClientArrivedDestinationScreenState
                     ],
                   ),
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      final solId = widget.solicitud?.id;
+                      final comentario = _comentarioController.text.trim();
+
+                      if (solId != null && solId.isNotEmpty) {
+                        try {
+                          await SolicitudService().calificar(
+                            solId,
+                            calificacion: _rating,
+                            comentarioCliente: comentario.isNotEmpty ? comentario : null,
+                          );
+                        } catch (e) {
+                          debugPrint('Aviso al registrar calificación del cliente: $e');
+                        }
+                      }
+
+                      if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('¡Gracias por calificar a $conductorNombre con $_rating estrellas!'),
