@@ -186,27 +186,7 @@ class _ClientArrivedDestinationScreenState
 
               const SizedBox(height: 28),
 
-              // Métricas de distancia y tiempo
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: _buildTripInfoCard(
-                      icon: Icons.map_outlined,
-                      value: '18.4 km',
-                      label: 'Distancia',
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: _buildTripInfoCard(
-                      icon: Icons.access_time_rounded,
-                      value: '32 min',
-                      label: 'Tiempo',
-                    ),
-                  ),
-                ],
-              ),
+// Métricas de distancia y tiempo eliminadas por solicitud
 
               const SizedBox(height: 36),
 

@@ -67,10 +67,30 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
     final solId = widget.solicitud?.id;
     if (solId == null || solId.isEmpty) return;
 
-    _statusPollingTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
+    _statusPollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       try {
         final updated = await _solicitudService.obtenerSolicitudPorId(solId);
         if (!mounted) return;
+
+        final nuevoDestino = updated.destino;
+        final bool hayCambioDestino = (nuevoDestino != null &&
+            nuevoDestino.isNotEmpty &&
+            _lastKnownDestino != null &&
+            nuevoDestino.trim().toLowerCase() != _lastKnownDestino!.trim().toLowerCase());
+
+        final bool tieneCambioRutaEnModelo = (updated.destinoInicial != null &&
+            updated.destinoInicial!.isNotEmpty &&
+            updated.destino != null &&
+            updated.destino != updated.destinoInicial);
+
+        if (hayCambioDestino || (tieneCambioRutaEnModelo && !_isDetourActive)) {
+          debugPrint('[Tracking] Cambio de ruta detectado: $_lastKnownDestino -> $nuevoDestino');
+          _lastKnownDestino = nuevoDestino;
+          _isDetourActive = true;
+          if (nuevoDestino != null && nuevoDestino.isNotEmpty) {
+            await _actualizarRutaNuevoDestino(nuevoDestino);
+          }
+        }
 
         setState(() {
           _currentSolicitud = updated;
@@ -121,7 +141,10 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
     try {
       final searchAddress = '$address, Medellín, Colombia';
       final url = 'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(searchAddress)}&format=json&limit=1';
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'User-Agent': 'MiConductorApp/1.0 (contact: support@miconductor.com)'},
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as List;
         if (data.isNotEmpty) {
@@ -177,6 +200,7 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
         setState(() {
           _endPoint = newCoords;
           _isLoadingRoute = true;
+          _isDetourActive = true;
         });
       } else {
         final offsetLat = _startPoint.latitude + (_endPoint.latitude - _startPoint.latitude) * 0.8 + 0.007;
@@ -185,11 +209,31 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
           setState(() {
             _endPoint = LatLng(offsetLat, offsetLng);
             _isLoadingRoute = true;
+            _isDetourActive = true;
           });
         }
       }
       await _fetchRoute();
-    } catch (_) {}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.alt_route_rounded, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Ruta actualizada en el mapa: $nuevoDestino'),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.accentOrange,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error en _actualizarRutaNuevoDestino: $e');
+    }
   }
 
   Future<void> _recalcularRutaDesvio() async {
@@ -373,17 +417,21 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
                       ),
                     ],
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.fiber_manual_record, color: Color(0xFF2E7D5B), size: 14),
-                      SizedBox(width: 8),
+                      Icon(
+                        Icons.fiber_manual_record,
+                        color: _isDetourActive ? AppColors.accentOrange : const Color(0xFF2E7D5B),
+                        size: 14,
+                      ),
+                      const SizedBox(width: 8),
                       Text(
-                        'VIAJE EN PROCESO',
+                        _isDetourActive ? 'VIAJE EN PROCESO · CAMBIO DE RUTA' : 'VIAJE EN PROCESO',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D5B),
+                          color: _isDetourActive ? AppColors.accentOrange : const Color(0xFF2E7D5B),
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -524,6 +572,36 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
                             padding: EdgeInsets.symmetric(vertical: 4),
                             child: Divider(height: 8, thickness: 0.5),
                           ),
+                          if (_isDetourActive || (_currentSolicitud?.destinoInicial != null && _currentSolicitud?.destinoInicial != _currentSolicitud?.destino)) ...[
+                            Row(
+                              children: [
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade400,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Inicial: ${_currentSolicitud?.destinoInicial ?? widget.solicitud?.destino ?? ""}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                      decoration: TextDecoration.lineThrough,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 4),
+                              child: Divider(height: 8, thickness: 0.5),
+                            ),
+                          ],
                           Row(
                             children: [
                               Container(
@@ -536,14 +614,36 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
                               ),
                               const SizedBox(width: 10),
                               Expanded(
-                                child: Text(
-                                  destAddress,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        destAddress,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (_isDetourActive || (_currentSolicitud?.destinoInicial != null && _currentSolicitud?.destinoInicial != _currentSolicitud?.destino))
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.accentOrange.withOpacity(0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Text(
+                                          'NUEVA RUTA',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.accentOrange,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ],

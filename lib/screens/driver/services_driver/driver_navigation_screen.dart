@@ -824,58 +824,6 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Tiempo estimado
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Llegada estimada',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.slateGray,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                '14:30',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                'Tiempo restante',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.slateGray,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                '15 min',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
                       // Botón para Reportar Novedad
                       SizedBox(
                         width: double.infinity,

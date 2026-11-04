@@ -185,7 +185,7 @@ class _DriverReportNoveltyScreenState extends State<DriverReportNoveltyScreen> {
     setState(() => _isCreating = true);
     if (_cambiarRuta && solId != null && nuevaDireccion != null) {
       try {
-        await _solicitudService.actualizarDestino(solId, nuevaDireccion);
+        await _solicitudService.actualizarDestino(solId, nuevaDireccion, motivo: _selectedNovelty ?? 'Cambio de ruta por novedad');
       } catch (updateErr) {
         debugPrint('Aviso al actualizar destino en solicitud: $updateErr');
       }

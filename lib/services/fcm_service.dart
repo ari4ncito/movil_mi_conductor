@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -9,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 import 'notificacion_service.dart';
 import '../screens/shared/notifications_screen.dart';
+import '../firebase_options.dart';
 
 /// Handler de mensajes en segundo plano (requiere ser función de nivel superior con @pragma).
 @pragma('vm:entry-point')
@@ -16,7 +16,9 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     // Si Firebase no está inicializado en el isolate de fondo, inicializarlo
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
     }
     debugPrint('[FCM Background] Mensaje recibido: ${message.messageId} - ${message.notification?.title}');
   } catch (e) {
@@ -46,15 +48,19 @@ class FcmService {
     if (_isInitialized) return;
 
     try {
-      // 1. Inicializar Firebase Core
+      // 1. Inicializar Firebase Core con las opciones de la plataforma
       if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp();
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
       }
       _isFirebaseAvailable = true;
-      debugPrint('🔥 [FCM] Firebase Core inicializado correctamente.');
+      debugPrint('🔥 [FCM] Firebase Core inicializado correctamente (${kIsWeb ? "Web" : defaultTargetPlatform.name}).');
 
-      // 2. Configurar Background Handler
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      // 2. Configurar Background Handler (solo en plataformas nativas)
+      if (!kIsWeb) {
+        FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      }
 
       // 3. Solicitar permisos (Android 13+ y iOS)
       await solicitarPermisos();
@@ -168,9 +174,9 @@ class FcmService {
 
       final plataforma = kIsWeb
           ? 'WEB'
-          : Platform.isIOS
+          : (defaultTargetPlatform == TargetPlatform.iOS
               ? 'IOS'
-              : 'FLUTTER_ANDROID';
+              : 'FLUTTER_ANDROID');
 
       await _notificacionService.registrarDispositivo(
         token: token,
