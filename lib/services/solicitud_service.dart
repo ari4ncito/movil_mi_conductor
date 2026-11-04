@@ -124,13 +124,16 @@ class SolicitudService {
   Future<Solicitud> actualizarSolicitud(String id, Solicitud solicitud) =>
       actualizar(id, solicitud);
 
-  Future<Solicitud> actualizarDestino(String id, String nuevoDestino) async {
+  Future<Solicitud> actualizarDestino(String id, String nuevoDestino, {String? motivo}) async {
     _requireId(id);
     return Solicitud.fromJson(
       _map(
         await client.put(
           '/solicitudes/$id',
-          body: {'destino': nuevoDestino},
+          body: {
+            'destino': nuevoDestino,
+            if (motivo != null && motivo.isNotEmpty) 'motivo': motivo,
+          },
         ),
       ),
     );

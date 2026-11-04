@@ -764,15 +764,56 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
                                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                                 ),
                                 const SizedBox(height: 16),
-                                const Text(
-                                  'PUNTO DE LLEGADA (DESTINO)',
-                                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  solicitud.destino ?? 'No especificado',
-                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                                ),
+                                if (solicitud.destinoInicial != null &&
+                                    solicitud.destinoInicial!.isNotEmpty &&
+                                    solicitud.destinoInicial != solicitud.destino) ...[
+                                  const Text(
+                                    'DESTINO INICIAL (RUTA PROGRAMADA)',
+                                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    solicitud.destinoInicial!,
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade600, decoration: TextDecoration.lineThrough),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      const Text(
+                                        'NUEVO DESTINO (CAMBIO DE RUTA)',
+                                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.accent),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                        decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.12), borderRadius: BorderRadius.circular(4)),
+                                        child: const Text('REGISTRADO', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.accent)),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    solicitud.destino ?? 'No especificado',
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                  ),
+                                  if (solicitud.cambioRuta != null && solicitud.cambioRuta?['motivo'] != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Motivo: ${solicitud.cambioRuta!['motivo']}',
+                                      style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Color(0xFFC2410C)),
+                                    ),
+                                  ],
+                                ] else ...[
+                                  const Text(
+                                    'PUNTO DE LLEGADA (DESTINO)',
+                                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    solicitud.destino ?? 'No especificado',
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                  ),
+                                ],
                               ],
                             ),
                           ),

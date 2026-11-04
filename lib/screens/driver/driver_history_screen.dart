@@ -378,14 +378,54 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        'Destino',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                      ),
-                      Text(
-                        destination,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                      ),
+                      if (solicitud?.destinoInicial != null &&
+                          solicitud!.destinoInicial!.isNotEmpty &&
+                          solicitud?.destinoInicial != solicitud?.destino) ...[
+                        Text(
+                          'Destino Inicial (Ruta Programada)',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        ),
+                        Text(
+                          solicitud!.destinoInicial!,
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade600, decoration: TextDecoration.lineThrough),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Text(
+                              'Nuevo Destino (Cambio de ruta)',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFFF8A00)),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(color: const Color(0xFFFF8A00).withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
+                              child: const Text('CAMBIO REGISTRADO', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFFFF8A00))),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          destination,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF16262D)),
+                        ),
+                        if (solicitud?.cambioRuta != null && solicitud!.cambioRuta?['motivo'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Motivo: ${solicitud!.cambioRuta!['motivo']}',
+                              style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Color(0xFFC2410C)),
+                            ),
+                          ),
+                      ] else ...[
+                        Text(
+                          'Destino',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        ),
+                        Text(
+                          destination,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                      ],
                     ],
                   ),
                 ),

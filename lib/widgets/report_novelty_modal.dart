@@ -231,7 +231,7 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
       // 1. Si hay cambio de ruta y solicitud activa, actualizar destino en backend
       if (_cambiarRuta && solId != null && nuevaDireccion != null) {
         try {
-          await _solicitudService.actualizarDestino(solId, nuevaDireccion);
+          await _solicitudService.actualizarDestino(solId, nuevaDireccion, motivo: (selectedConfig['titulo'] as String?) ?? 'Cambio de ruta por incidente');
           debugPrint('Destino de solicitud actualizado a: $nuevaDireccion');
         } catch (updateErr) {
           debugPrint('Aviso al actualizar destino de solicitud: $updateErr');

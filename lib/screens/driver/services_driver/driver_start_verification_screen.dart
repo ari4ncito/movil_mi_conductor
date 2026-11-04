@@ -140,23 +140,7 @@ class _DriverStartVerificationScreenState
                 ],
               ),
               const SizedBox(height: 32),
-              // Distance and time cards
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildTripInfoCard(
-                    icon: Icons.map,
-                    value: '18.4 km',
-                    label: 'Distancia',
-                  ),
-                  const SizedBox(width: 16),
-                  _buildTripInfoCard(
-                    icon: Icons.access_time,
-                    value: '32 min',
-                    label: 'Tiempo',
-                  ),
-                ],
-              ),
+// Métricas de distancia y tiempo eliminadas por solicitud
               const SizedBox(height: 32),
               // Sección de comentario opcional del conductor sobre el cliente
               Container(
