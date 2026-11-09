@@ -1,11 +1,32 @@
 import 'package:flutter/material.dart';
-import 'guest_driver_assigned_screen.dart';
+import '../auth/login_screen.dart';
+
+// ─────────────────────────────────────────────
+// Paleta unificada Mi Conductor
+// ─────────────────────────────────────────────
+class AppColors {
+  static const Color background = Color(0xFFF2F5F6);
+  static const Color petrolDark = Color(0xFF0B3B4A);
+  static const Color petrolBase = Color(0xFF12566B);
+  static const Color petrolLight = Color(0xFF1D7A94);
+  static const Color petrolPale = Color(0xFFDCE9EA);
+  static const Color slateGray = Color(0xFF5C6B73);
+  static const Color borderGray = Color(0xFFE1E7E9);
+  static const Color textPrimary = Color(0xFF16262D);
+  static const Color textSecondary = Color(0xFF6B7C80);
+  static const Color accentOrange = Color(0xFFE8821E);
+  static const Color accentOrangeDark = Color(0xFFC96A1B);
+  static const Color successGreen = Color(0xFF16A34A);
+  static const Color successGreenSoft = Color(0xFFDCFCE7);
+  static const Color white = Colors.white;
+}
 
 class GuestConfirmationScreen extends StatelessWidget {
   final String name;
   final String phone;
   final String pickup;
   final String destination;
+  final String? codigo;
 
   const GuestConfirmationScreen({
     super.key,
@@ -13,135 +34,200 @@ class GuestConfirmationScreen extends StatelessWidget {
     required this.phone,
     required this.pickup,
     required this.destination,
+    this.codigo,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF3E0),
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Center(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(32),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 4),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Tarjeta Principal
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: AppColors.borderGray),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.petrolDark.withOpacity(0.08),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Ícono animado de éxito
+                      Container(
+                        width: 86,
+                        height: 86,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.successGreen,
+                              Color(0xFF15803D),
+                            ],
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.successGreen.withOpacity(0.35),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFF8A00),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 50,
-                            ),
-                          ),
-                          const SizedBox(height: 32),
+                        child: const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 46,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
 
-                          const Text(
-                            '¡Solicitud Recibida!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                              height: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
+                      // Título
+                      const Text(
+                        '¡Solicitud Registrada!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.petrolDark,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
 
-                          Text(
-                            'En unos momentos un asesor se contactará contigo al número proporcionado para continuar con la creación de tu servicio premium.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[700],
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 32),
+                      // Mensaje
+                      Text(
+                        'Tu solicitud de servicio ha sido enviada con éxito. En breve un asesor o conductor asignado se comunicará al número proporcionado para confirmar los detalles.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          color: AppColors.textSecondary,
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
 
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF0F4F8),
-                              borderRadius: BorderRadius.circular(24),
+                      // Resumen de la solicitud
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppColors.borderGray),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildInfoRow(
+                              icon: Icons.person_outline_rounded,
+                              label: 'Contacto',
+                              value: name,
                             ),
-                            child: Column(
-                              children: [
-                                _buildInfoChip(
-                                  icon: Icons.directions_car,
-                                  label1: 'TIPO DE SERVICIO',
-                                  label2: 'Servicio Express',
-                                ),
-                                const SizedBox(height: 16),
-                                _buildInfoChip(
-                                  icon: Icons.security,
-                                  label1: 'ESTADO DE SOLICITUD',
-                                  label2: 'Procesando por Asesor',
-                                  hasDot: true,
-                                ),
+                            const Divider(height: 20, thickness: 1, color: AppColors.borderGray),
+                            _buildInfoRow(
+                              icon: Icons.phone_outlined,
+                              label: 'Teléfono',
+                              value: phone,
+                            ),
+                            const Divider(height: 20, thickness: 1, color: AppColors.borderGray),
+                            _buildInfoRow(
+                              icon: Icons.my_location_rounded,
+                              label: 'Origen',
+                              value: pickup,
+                            ),
+                            const Divider(height: 20, thickness: 1, color: AppColors.borderGray),
+                            _buildInfoRow(
+                              icon: Icons.location_on_rounded,
+                              label: 'Destino',
+                              value: destination,
+                              valueColor: AppColors.accentOrangeDark,
+                            ),
+                            if (codigo != null && codigo!.isNotEmpty) ...[
+                              const Divider(height: 20, thickness: 1, color: AppColors.borderGray),
+                              _buildInfoRow(
+                                icon: Icons.confirmation_number_outlined,
+                                label: 'Código',
+                                value: codigo!,
+                                valueColor: AppColors.petrolBase,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      // Botón Volver al Inicio
+                      SizedBox(
+                        width: double.infinity,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(26),
+                            gradient: const LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [
+                                AppColors.accentOrange,
+                                AppColors.accentOrangeDark,
                               ],
                             ),
-                          ),
-                          const SizedBox(height: 40),
-
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.of(context).pushAndRemoveUntil(
-                                  MaterialPageRoute(
-                                    builder: (context) => const GuestDriverAssignedScreen(),
-                                  ),
-                                  (route) => false,
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFF8A00),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 18),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.accentOrange.withOpacity(0.35),
+                                blurRadius: 14,
+                                offset: const Offset(0, 6),
                               ),
-                              child: const Text(
-                                'Continuar',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (context) => const LoginScreen(),
                                 ),
+                                (route) => false,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(26),
+                              ),
+                            ),
+                            child: const Text(
+                              'Entendido, Volver al Inicio',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
                               ),
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -149,68 +235,45 @@ class GuestConfirmationScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoChip({
+  Widget _buildInfoRow({
     required IconData icon,
-    required String label1,
-    required String label2,
-    bool hasDot = false,
+    required String label,
+    required String value,
+    Color? valueColor,
   }) {
     return Row(
       children: [
         Container(
-          width: 44,
-          height: 44,
-          decoration: const BoxDecoration(
-            color: Color(0xFF81D4FA),
-            shape: BoxShape.circle,
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: AppColors.petrolPale,
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icon,
-            color: const Color(0xFF0288D1),
-            size: 24,
-          ),
+          child: Icon(icon, size: 17, color: AppColors.petrolBase),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label1,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[500],
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.8,
-                ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
               ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  if (hasDot)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF0288D1),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  Expanded(
-                    child: Text(
-                      label2,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF01579B),
-                      ),
-                    ),
-                  ),
-                ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.bold,
+                color: valueColor ?? AppColors.textPrimary,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );
