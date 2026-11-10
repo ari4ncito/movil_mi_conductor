@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../client/services/searching_driver_screen.dart';
 import '../../models/vehicle.dart';
 import '../../models/solicitud.dart';
@@ -34,6 +35,7 @@ class AppColors {
   static const Color accentSoft = Color(
     0xFFFBEAD8,
   ); // Naranja muy tenue (badges/fondos)
+  static const Color danger = Color(0xFFDC2626); // Rojo alertas / errores
 }
 
 class ClientHomeScreen extends StatefulWidget {
@@ -63,6 +65,7 @@ class ClientHomeScreen extends StatefulWidget {
 }
 
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _originController = TextEditingController();
@@ -200,18 +203,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   }
 
   Future<void> _createSolicitud() async {
-    final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
-    final origin = _originController.text.trim();
-    final destination = _destinationController.text.trim();
-
-    if (name.isEmpty) {
-      _showMessage('Por favor ingresa tu nombre completo');
-      return;
-    }
-
-    if (phone.isEmpty) {
-      _showMessage('Por favor ingresa tu número telefónico');
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
@@ -227,15 +219,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       return;
     }
 
-    if (origin.isEmpty) {
-      _showMessage('Por favor ingresa el lugar de origen');
-      return;
-    }
-
-    if (destination.isEmpty) {
-      _showMessage('Por favor ingresa el lugar de destino');
-      return;
-    }
+    final origin = _originController.text.trim();
+    final destination = _destinationController.text.trim();
 
     final clienteId = _clienteId ?? widget.clienteId?.trim();
     if (clienteId == null || clienteId.isEmpty) {
@@ -317,6 +302,14 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: AppColors.petrol, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.danger),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.danger, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
@@ -576,32 +569,61 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     ),
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Nombre y Apellidos
-                    _sectionLabel('DATOS PERSONALES', Icons.badge_outlined),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _nameController,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      decoration: _inputDecoration(
-                        label: 'Nombre Completo',
-                        icon: Icons.person_outline,
-                        iconColor: AppColors.accent,
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Nombre y Apellidos
+                      _sectionLabel('DATOS PERSONALES', Icons.badge_outlined),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _nameController,
+                        style: const TextStyle(color: AppColors.textPrimary),
+                        decoration: _inputDecoration(
+                          label: 'Nombre Completo',
+                          icon: Icons.person_outline,
+                          iconColor: AppColors.accent,
+                        ),
+                        validator: (val) {
+                          final nombre = val?.trim() ?? '';
+                          if (nombre.isEmpty) {
+                            return 'Por favor ingresa tu nombre completo';
+                          }
+                          if (nombre.length < 3) {
+                            return 'El nombre es muy corto (mín. 3 letras)';
+                          }
+                          if (!RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$').hasMatch(nombre)) {
+                            return 'El nombre solo debe contener letras';
+                          }
+                          return null;
+                        },
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      decoration: _inputDecoration(
-                        label: 'Número Telefónico',
-                        icon: Icons.phone_outlined,
-                        iconColor: AppColors.accent,
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
+                        ],
+                        style: const TextStyle(color: AppColors.textPrimary),
+                        decoration: _inputDecoration(
+                          label: 'Número Telefónico (Celular)',
+                          icon: Icons.phone_outlined,
+                          iconColor: AppColors.accent,
+                        ),
+                        validator: (val) {
+                          final phone = val?.trim() ?? '';
+                          if (phone.isEmpty) {
+                            return 'Por favor ingresa tu número telefónico';
+                          }
+                          if (!RegExp(r'^3\d{9}$').hasMatch(phone)) {
+                            return 'Ingresa un celular válido de 10 dígitos (ej. 3001234567)';
+                          }
+                          return null;
+                        },
                       ),
-                    ),
 
                     _sectionDivider(),
 
@@ -719,6 +741,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                               icon: Icons.directions_car_outlined,
                               iconColor: AppColors.petrol,
                             ),
+                            validator: (val) {
+                              if (val == null) {
+                                return 'Por favor selecciona un vehículo';
+                              }
+                              return null;
+                            },
                             items: _vehicles.map((vehicle) {
                               final label = vehicle.model.isNotEmpty
                                   ? '${vehicle.brand} ${vehicle.model}'
@@ -807,6 +835,16 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                         icon: Icons.my_location,
                         iconColor: AppColors.slate,
                       ),
+                      validator: (val) {
+                        final origin = val?.trim() ?? '';
+                        if (origin.isEmpty) {
+                          return 'Por favor ingresa el lugar de origen';
+                        }
+                        if (origin.length < 4) {
+                          return 'Dirección de origen demasiado corta (mín. 4 caracteres)';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -817,6 +855,19 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                         icon: Icons.location_pin,
                         iconColor: AppColors.accent,
                       ),
+                      validator: (val) {
+                        final destination = val?.trim() ?? '';
+                        if (destination.isEmpty) {
+                          return 'Por favor ingresa el lugar de destino';
+                        }
+                        if (destination.length < 4) {
+                          return 'Dirección de destino demasiado corta (mín. 4 caracteres)';
+                        }
+                        if (destination.toLowerCase() == _originController.text.trim().toLowerCase()) {
+                          return 'El destino no puede ser igual al origen';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 28),
 
@@ -887,6 +938,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                   ],
                 ),
               ),
+            ),
 
               const SizedBox(height: 18),
 

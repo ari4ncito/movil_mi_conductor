@@ -5,6 +5,36 @@ import 'auth_service.dart';
 
 class UsuarioService {
   // =========================
+  // CONSULTAR POR DOCUMENTO (PÚBLICO)
+  // =========================
+  static Future<Map<String, dynamic>> consultarPorDocumento(
+    String documento, {
+    String? tipoDocumento,
+  }) async {
+    final doc = documento.trim();
+    if (doc.isEmpty) return {'existe': false, 'datos': null};
+
+    final query = <String, String>{};
+    if (tipoDocumento != null && tipoDocumento.trim().isNotEmpty) {
+      query['tipoDocumento'] = tipoDocumento.trim().toUpperCase();
+    }
+
+    final uri = ApiConfig.uri('/usuarios/consulta-documento/$doc', query.isNotEmpty ? query : null);
+    final response = await http.get(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+    ).timeout(ApiConfig.requestTimeout);
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (data is Map<String, dynamic> && data['data'] is Map<String, dynamic>) {
+        return Map<String, dynamic>.from(data['data']);
+      }
+    }
+    return {'existe': false, 'datos': null};
+  }
+
+  // =========================
   // OBTENER USUARIO POR ID
   // =========================
   static Future<Map<String, dynamic>> obtenerPorId(String id) async {

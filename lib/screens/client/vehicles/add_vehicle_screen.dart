@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/vehiculo_service.dart';
@@ -193,6 +194,17 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         _plateAvailable = false;
         _plateVerifying = false;
         _plateAlertMessage = null;
+      });
+      return;
+    }
+
+    final plateRegex = RegExp(r'^[A-Z]{3}[0-9]{3}$');
+    if (!plateRegex.hasMatch(placa)) {
+      setState(() {
+        _plateError = 'Debe tener 3 letras y 3 números (ej. ABC123)';
+        _plateAvailable = false;
+        _plateVerifying = false;
+        _plateAlertMessage = _plateError;
       });
       return;
     }
@@ -1104,9 +1116,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         TextFormField(
                           controller: _platesController,
                           textCapitalization: TextCapitalization.characters,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                            LengthLimitingTextInputFormatter(6),
+                          ],
                           decoration: _inputDecoration(
                             labelText: 'PLACA',
-                            hintText: 'Ej. ABC123',
+                            hintText: 'Ej. abc123',
                             prefixIcon: Icons.confirmation_number_outlined,
                             suffixIcon: _plateVerifying
                                 ? const Padding(
@@ -1124,13 +1140,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                         : null,
                           ),
                           validator: (value) {
-                            final val = value?.trim().toUpperCase() ?? '';
+                            final val = value?.trim() ?? '';
                             if (val.isEmpty) {
                               return 'Ingresa la placa del vehículo';
                             }
-                            final regex = RegExp(r'^[A-Z]{3}[0-9]{3}$');
+                            final regex = RegExp(r'^[a-zA-Z]{3}[0-9]{3}$');
                             if (!regex.hasMatch(val)) {
-                              return 'Formato inválido: 3 letras y 3 números (ej. ABC123)';
+                              return 'Debe tener 3 letras y 3 números (ej. abc123)';
                             }
                             return null;
                           },

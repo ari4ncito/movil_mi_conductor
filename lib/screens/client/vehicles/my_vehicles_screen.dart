@@ -115,7 +115,9 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
           children: [
             Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 28),
             SizedBox(width: 8),
-            Text('Eliminar vehículo', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+            Expanded(
+              child: Text('Eliminar vehículo', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+            ),
           ],
         ),
         content: Text(
@@ -219,30 +221,34 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
           children: [
             // Cabecera
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Mis vehículos',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Mis vehículos',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _vehicles.isEmpty
-                            ? 'Administra los vehículos asociados a tu cuenta.'
-                            : '${_vehicles.length} ${_vehicles.length == 1 ? "vehículo activo" : "vehículos activos"}',
-                        style: const TextStyle(color: AppColors.slateGray, fontSize: 13),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          _vehicles.isEmpty
+                              ? 'Administra los vehículos asociados a tu cuenta.'
+                              : '${_vehicles.length} ${_vehicles.length == 1 ? "vehículo activo" : "vehículos activos"}',
+                          style: const TextStyle(color: AppColors.slateGray, fontSize: 13),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
                   IconButton(
                     tooltip: 'Actualizar lista',
@@ -539,37 +545,44 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             // Botón Estado
-                            InkWell(
-                              onTap: () => _mostrarModalCambioEstado(vehicle),
-                              borderRadius: BorderRadius.circular(6),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: (statusStyle['bg'] as Color),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: (statusStyle['border'] as Color).withOpacity(0.8), width: 0.8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.swap_horiz_rounded,
-                                      size: 14,
-                                      color: statusStyle['color'] as Color,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Estado',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
+                            Flexible(
+                              child: InkWell(
+                                onTap: () => _mostrarModalCambioEstado(vehicle),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: (statusStyle['bg'] as Color),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: (statusStyle['border'] as Color).withOpacity(0.8), width: 0.8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.swap_horiz_rounded,
+                                        size: 13,
                                         color: statusStyle['color'] as Color,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 2),
+                                      Flexible(
+                                        child: Text(
+                                          'Estado',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: statusStyle['color'] as Color,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
+                            const SizedBox(width: 4),
 
                             // Botones editar y eliminar
                             Row(
@@ -591,7 +604,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 5),
                                 InkWell(
                                   onTap: () => _removeVehicle(vehicle),
                                   borderRadius: BorderRadius.circular(6),
@@ -670,6 +683,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
               // Cabecera del modal
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
@@ -682,9 +696,13 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                             fontWeight: FontWeight.w800,
                             color: AppColors.textPrimary,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
-                        Row(
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -702,7 +720,6 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
@@ -848,13 +865,19 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.slateGray, fontSize: 13)),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-              fontSize: 13,
+          Expanded(
+            child: Text(label, style: const TextStyle(color: AppColors.slateGray, fontSize: 13)),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+                fontSize: 13,
+              ),
             ),
           ),
         ],
@@ -1334,24 +1357,29 @@ class _ChangeVehicleStatusModalSheetState extends State<_ChangeVehicleStatusModa
             // Título
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Cambiar estado del vehículo',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Cambiar estado del vehículo',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${widget.vehicle['marca'] ?? ''} ${widget.vehicle['modelo'] ?? ''} · ${widget.vehicle['placa'] ?? ''}',
-                      style: const TextStyle(fontSize: 12.5, color: AppColors.slateGray),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        '${widget.vehicle['marca'] ?? ''} ${widget.vehicle['modelo'] ?? ''} · ${widget.vehicle['placa'] ?? ''}',
+                        style: const TextStyle(fontSize: 12.5, color: AppColors.slateGray),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
