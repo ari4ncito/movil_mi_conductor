@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '/models/vehicle.dart';
+import '../../../models/vehicle.dart';
 
 // ─────────────────────────────────────────────
 // Paleta de la app: azul petróleo, escalas de azul oscuro,

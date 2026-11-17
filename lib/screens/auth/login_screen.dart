@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '/widgets/custom_text_field.dart';
+import '../../widgets/custom_text_field.dart';
 import '../client/client_section.dart';
 import '../driver/driver_section.dart';
 import 'register_screen.dart';
