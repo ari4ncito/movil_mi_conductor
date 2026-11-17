@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/client_profile_service.dart';
 import '../shared/edit_profile_screen.dart';
 import '../client/addresses/favorite_addresses_screen.dart';
 import '../shared/help_support_screen.dart';
@@ -42,6 +43,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   String _telefono = '';
   String _documento = '';
   String _direccion = '';
+  String _foto = '';
 
   @override
   void initState() {
@@ -61,6 +63,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
           _correo = sessionUser['correo']?.toString() ?? '';
           _telefono = sessionUser['telefono']?.toString() ?? '';
           _documento = sessionUser['documento']?.toString() ?? '';
+          _foto = sessionUser['foto']?.toString() ?? '';
           _loading = false;
         });
 
@@ -75,6 +78,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 _correo = freshUser['correo']?.toString() ?? _correo;
                 _telefono = freshUser['telefono']?.toString() ?? _telefono;
                 _documento = freshUser['documento']?.toString() ?? _documento;
+                _foto = freshUser['foto']?.toString() ?? _foto;
               });
             }
           } catch (_) {}
@@ -159,40 +163,106 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                         )
                       : Column(
                           children: [
-                            Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [AppColors.petrolLight, AppColors.petrolDark],
-                                ),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.white, width: 3),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.petrolDark.withOpacity(0.28),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: _initials.isNotEmpty
-                                    ? Text(
-                                        _initials,
-                                        style: const TextStyle(
-                                          fontSize: 34,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.white,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.person,
-                                        color: AppColors.white,
-                                        size: 56,
+                            GestureDetector(
+                              onTap: () {
+                                final currentFoto = _foto.isNotEmpty
+                                    ? _foto
+                                    : (ClientProfileService.instance.profileNotifier.value.fotoUrl ?? '');
+                                if (currentFoto.isNotEmpty) {
+                                  showDialog(
+                                    context: context,
+                                    barrierColor: Colors.black.withOpacity(0.82),
+                                    builder: (ctx) => Dialog(
+                                      backgroundColor: Colors.transparent,
+                                      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Align(
+                                            alignment: Alignment.topRight,
+                                            child: IconButton(
+                                              icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                                              onPressed: () => Navigator.of(ctx).pop(),
+                                            ),
+                                          ),
+                                          Container(
+                                            width: 280,
+                                            height: 280,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(color: Colors.white, width: 4),
+                                              image: DecorationImage(
+                                                image: NetworkImage(currentFoto),
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+                                          const Text(
+                                            'Foto de perfil',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [AppColors.petrolLight, AppColors.petrolDark],
+                                  ),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: AppColors.white, width: 3),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.petrolDark.withOpacity(0.28),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                  image: (_foto.isNotEmpty ||
+                                          (ClientProfileService.instance.profileNotifier.value.fotoUrl != null &&
+                                              ClientProfileService.instance.profileNotifier.value.fotoUrl!.isNotEmpty))
+                                      ? DecorationImage(
+                                          image: NetworkImage(
+                                            _foto.isNotEmpty
+                                                ? _foto
+                                                : ClientProfileService.instance.profileNotifier.value.fotoUrl!,
+                                          ),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
+                                ),
+                                child: (_foto.isEmpty &&
+                                        (ClientProfileService.instance.profileNotifier.value.fotoUrl == null ||
+                                            ClientProfileService.instance.profileNotifier.value.fotoUrl!.isEmpty))
+                                    ? Center(
+                                        child: _initials.isNotEmpty
+                                            ? Text(
+                                                _initials,
+                                                style: const TextStyle(
+                                                  fontSize: 34,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.white,
+                                                ),
+                                              )
+                                            : const Icon(
+                                                Icons.person,
+                                                color: AppColors.white,
+                                                size: 56,
+                                              ),
+                                      )
+                                    : null,
                               ),
                             ),
                             const SizedBox(height: 18),
