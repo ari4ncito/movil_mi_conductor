@@ -81,6 +81,13 @@ class ClienteService {
   }
 
   // =========================
+  // ACTUALIZAR FOTO DEL CLIENTE
+  // =========================
+  static Future<Map<String, dynamic>> actualizarFoto(String idOrUsuarioId, String fotoUrl) async {
+    return await update(idOrUsuarioId, {'foto': fotoUrl});
+  }
+
+  // =========================
   // ELIMINAR CLIENTE
   // =========================
   static Future<void> delete(String id) async {
@@ -109,17 +116,36 @@ class ClienteService {
     final usuario = await AuthService.obtenerUsuario();
     if (usuario == null) return null;
 
-    final usuarioId = usuario['_id'] ?? usuario['id'];
-    if (usuarioId == null) return null;
+    final usuarioId = (usuario['_id'] ?? usuario['id'])?.toString();
+    if (usuarioId == null || usuarioId.isEmpty) return null;
+
+    final token = await AuthService.obtenerToken();
+    if (token != null) {
+      try {
+        final response = await http.get(
+          Uri.parse('${ApiConfig.baseUrl}/clientes/usuario/$usuarioId'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data is Map && data['success'] == true && data['data'] is Map) {
+            return Map<String, dynamic>.from(data['data'] as Map);
+          }
+        }
+      } catch (_) {}
+    }
 
     try {
       final clientes = await getAll();
       for (final c in clientes) {
         if (c is Map<String, dynamic>) {
           final u = c['usuario'];
-          if (u is Map && (u['_id'] == usuarioId || u['id'] == usuarioId)) {
+          if (u is Map && (u['_id']?.toString() == usuarioId || u['id']?.toString() == usuarioId)) {
             return c;
-          } else if (u == usuarioId) {
+          } else if (u?.toString() == usuarioId) {
             return c;
           }
         }
