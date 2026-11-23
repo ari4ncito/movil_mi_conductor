@@ -729,7 +729,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           DropdownButtonFormField<Vehicle>(
-                            value: _selectedVehicle,
+                            initialValue: _selectedVehicle,
                             style: const TextStyle(color: AppColors.textPrimary),
                             dropdownColor: AppColors.cardBackground,
                             icon: const Icon(

@@ -1,3 +1,4 @@
+import '../../services/conductor_service.dart';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/usuario_service.dart';
@@ -44,6 +45,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String _rol = '';
   String? _usuarioId;
   String? _clienteId;
+  String? _fotoPerfil;
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -108,6 +110,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _telefonoController.text = sessionUser['telefono']?.toString() ?? '';
         _documentoController.text = sessionUser['documento']?.toString() ?? '';
         final tipoDoc = sessionUser['tipoDocumento']?.toString().toUpperCase();
+        _fotoPerfil = sessionUser['fotoPerfil']?.toString() ?? sessionUser['foto']?.toString();
         if (tipoDoc != null && _tiposDocumento.any((t) => t['value'] == tipoDoc)) {
           _tipoDocumento = tipoDoc;
         }
@@ -132,6 +135,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           }
 
           // Cargar datos según rol
+          if (_rol == 'CONDUCTOR') {
+            try {
+              final conductor = await ConductorService.obtenerPorUsuario(_usuarioId!);
+              final condFoto = conductor['fotoPerfil']?.toString() ?? '';
+              if (condFoto.isNotEmpty) {
+                _fotoPerfil = condFoto;
+              }
+            } catch (_) {}
+          }
+
           if (_rol == 'CLIENTE') {
             try {
               final cliente = await ClienteService.obtenerClienteActual();
@@ -572,18 +585,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ],
             ),
-            child: Center(
-              child: initials.isNotEmpty
-                  ? Text(
-                      initials.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+            child: (_fotoPerfil != null && _fotoPerfil!.isNotEmpty)
+                ? ClipOval(
+                    child: Image.network(
+                      _fotoPerfil!,
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: initials.isNotEmpty
+                            ? Text(
+                                initials.toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.person, color: Colors.white, size: 40),
                       ),
-                    )
-                  : const Icon(Icons.person, color: Colors.white, size: 40),
-            ),
+                    ),
+                  )
+                : Center(
+                    child: initials.isNotEmpty
+                        ? Text(
+                            initials.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.person, color: Colors.white, size: 40),
+                  ),
           ),
           const SizedBox(width: 18),
           Expanded(

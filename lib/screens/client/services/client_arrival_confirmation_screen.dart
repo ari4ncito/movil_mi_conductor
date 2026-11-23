@@ -115,6 +115,9 @@ class _ClientArrivalConfirmationScreenState
             : null) ??
         solicitud?.conductorData?['nombre'] ??
         'Conductor Asignado';
+    final conductorFoto = (usuarioConductor is Map ? (usuarioConductor['fotoPerfil'] ?? usuarioConductor['foto']) : null) ??
+        solicitud?.conductorData?['fotoPerfil'] ??
+        solicitud?.conductorData?['foto'];
 
     final vehiculoData = solicitud?.vehiculoData ?? {};
     final marca = vehiculoData['marca'] ?? '';
@@ -600,18 +603,39 @@ class _ClientArrivalConfirmationScreenState
                         ),
                         shape: BoxShape.circle,
                       ),
-                      child: Center(
-                        child: Text(
-                          conductorNombre.isNotEmpty
-                              ? conductorNombre[0].toUpperCase()
-                              : 'C',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
+                      child: (conductorFoto != null && conductorFoto.toString().isNotEmpty)
+                          ? ClipOval(
+                              child: Image.network(
+                                conductorFoto.toString(),
+                                width: 48,
+                                height: 48,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Center(
+                                  child: Text(
+                                    conductorNombre.isNotEmpty
+                                        ? conductorNombre[0].toUpperCase()
+                                        : 'C',
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Center(
+                              child: Text(
+                                conductorNombre.isNotEmpty
+                                    ? conductorNombre[0].toUpperCase()
+                                    : 'C',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(

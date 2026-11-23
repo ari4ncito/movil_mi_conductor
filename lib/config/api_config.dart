@@ -5,12 +5,12 @@ class ApiConfig {
   const ApiConfig._();
 
   static String get _fallbackUrl {
-    if (kIsWeb) return 'http://localhost:3000/api';
+    if (kIsWeb) return 'http://localhost:4000/api';
     try {
-      // Con 'adb reverse tcp:3000 tcp:3000', localhost:3000 en el celular apunta directo a la PC
-      if (Platform.isAndroid) return 'http://localhost:3000/api';
+      // Con 'adb reverse tcp:4000 tcp:4000', localhost:4000 en el celular apunta directo a la PC
+      if (Platform.isAndroid) return 'http://localhost:4000/api';
     } catch (_) {}
-    return 'http://localhost:3000/api';
+    return 'http://localhost:4000/api';
   }
 
   /// Override with `--dart-define=API_BASE_URL=https://...` per environment.

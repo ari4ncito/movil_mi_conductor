@@ -1085,7 +1085,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       children: [
                         // 1. TIPO DE VEHÍCULO (PRIMERO)
                         DropdownButtonFormField<String>(
-                          value: _vehicleType,
+                          initialValue: _vehicleType,
                           decoration: _inputDecoration(
                             labelText: 'TIPO DE VEHÍCULO',
                             hintText: 'Selecciona el tipo',

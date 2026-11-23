@@ -477,16 +477,42 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
                             ),
                             border: Border.all(color: AppColors.accentOrange, width: 2),
                           ),
-                          child: Center(
-                            child: Text(
-                              driverName.isNotEmpty ? driverName[0].toUpperCase() : 'C',
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                          child: (() {
+                            final fotoCond = (usuarioConductor is Map ? usuarioConductor['fotoPerfil']?.toString() : null) ??
+                                _currentSolicitud?.conductorData?['fotoPerfil']?.toString();
+                            final initialLetter = driverName.isNotEmpty ? driverName[0].toUpperCase() : 'C';
+
+                            if (fotoCond != null && fotoCond.isNotEmpty) {
+                              return ClipOval(
+                                child: Image.network(
+                                  fotoCond,
+                                  width: 56,
+                                  height: 56,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Center(
+                                    child: Text(
+                                      initialLetter,
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            return Center(
+                              child: Text(
+                                initialLetter,
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                          ),
+                            );
+                          })(),
                         ),
                         const SizedBox(width: 14),
                         Expanded(

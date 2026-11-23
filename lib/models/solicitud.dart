@@ -118,7 +118,9 @@ class Solicitud {
                    json['conductor'] is Map ? Map<String, dynamic>.from(json['conductor']) : null,
     vehiculoData: json['vehiculo'] is Map ? Map<String, dynamic>.from(json['vehiculo']) : null,
     clienteData: json['cliente'] is Map ? Map<String, dynamic>.from(json['cliente']) : null,
-    calificacionConductor: json['calificacionConductor'] is num ? (json['calificacionConductor'] as num).toInt() : null,
+    calificacionConductor: (json['calificacionConductor'] ?? json['calificacion']) is num
+        ? ((json['calificacionConductor'] ?? json['calificacion']) as num).toInt()
+        : null,
     comentarioCliente: _string(json['comentarioCliente']),
     comentarioConductor: _string(json['comentarioConductor']),
     destinoInicial: _string(json['destinoInicial']),

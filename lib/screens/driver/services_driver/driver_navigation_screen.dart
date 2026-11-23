@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import '../../../models/solicitud.dart';
 import '../../../services/auth_service.dart';
 import 'driver_arrived_screen.dart';
-import 'driver_report_novelty_screen.dart';
 import 'driver_vehicle_delivery_verification.dart';
 import '../../../widgets/report_novelty_modal.dart';
 

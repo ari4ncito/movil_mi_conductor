@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../client_home_screen.dart';
-import '../../shared/notifications_screen.dart';
 
 // ─────────────────────────────────────────────
 // Paleta de la app: azul petróleo, escalas de azul oscuro,
