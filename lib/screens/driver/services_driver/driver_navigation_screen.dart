@@ -5,8 +5,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import '../../../models/solicitud.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/geocoding_service.dart';
 import 'driver_arrived_screen.dart';
-import 'driver_report_novelty_screen.dart';
 import 'driver_vehicle_delivery_verification.dart';
 import '../../../widgets/report_novelty_modal.dart';
 
@@ -46,7 +46,6 @@ class DriverNavigationScreen extends StatefulWidget {
 
 class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
   List<LatLng> _routePoints = [];
-  List<LatLng> _originalRoutePoints = [];
   bool _isLoadingRoute = true;
   bool _isDetourActive = false;
   String? _detourReason;
@@ -54,7 +53,8 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
   bool _isCardMinimized = false;
   final MapController _mapController = MapController();
   
-  // Coordenadas fallback (Medellín, Colombia)
+  bool _hasStartCoords = false;
+  bool _hasEndCoords = false;
   LatLng _startPoint = const LatLng(6.2442, -75.5812);
   LatLng _endPoint = const LatLng(6.2518, -75.5636);
 
@@ -65,7 +65,7 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
   }
 
   Future<void> _initializeMapAndRoute() async {
-    // 1. Intentar obtener coordenadas reales
+    // 1. Obtener coordenadas reales mediante GeocodingService híbrido (4 fases)
     _currentDestAddress ??= widget.solicitud?.destino;
     final originAddress = widget.solicitud?.origen;
     final destAddress = _currentDestAddress ?? widget.solicitud?.destino;
@@ -73,36 +73,40 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
     if (originAddress != null && originAddress.isNotEmpty) {
       final startCoords = await _geocodeAddress(originAddress);
       if (startCoords != null && mounted) {
-        setState(() => _startPoint = startCoords);
+        setState(() {
+          _startPoint = startCoords;
+          _hasStartCoords = true;
+        });
       }
     }
     if (destAddress != null && destAddress.isNotEmpty) {
       final endCoords = await _geocodeAddress(destAddress);
       if (endCoords != null && mounted) {
-        setState(() => _endPoint = endCoords);
+        setState(() {
+          _endPoint = endCoords;
+          _hasEndCoords = true;
+        });
       }
     }
 
-    // 2. Obtener ruta con OSRM
-    await _fetchRoute();
+    // 2. Obtener ruta con OSRM solo si ambas ubicaciones están verificadas
+    if (_hasStartCoords && _hasEndCoords) {
+      await _fetchRoute();
+    } else {
+      if (mounted) {
+        setState(() => _isLoadingRoute = false);
+      }
+    }
   }
 
   Future<LatLng?> _geocodeAddress(String address) async {
     try {
-      // Append Medellín, Colombia to improve geocoding accuracy
-      final searchAddress = '$address, Medellín, Colombia';
-      final url = 'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(searchAddress)}&format=json&limit=1';
-      final response = await http.get(Uri.parse(url), headers: {'User-Agent': 'MiConductorApp/1.0'});
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body) as List;
-        if (data.isNotEmpty) {
-          final lat = double.parse(data[0]['lat'].toString());
-          final lon = double.parse(data[0]['lon'].toString());
-          return LatLng(lat, lon);
-        }
+      final result = await GeocodingService.instance.geocodeAddress(address);
+      if (result.hasCoordinates) {
+        return result.latLng;
       }
     } catch (e) {
-      debugPrint('Error geocoding address: $e');
+      debugPrint('Error en GeocodingService: $e');
     }
     return null;
   }
@@ -122,7 +126,6 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
             _routePoints = coordinates
                 .map((coord) => LatLng(coord[1], coord[0]))
                 .toList();
-            _originalRoutePoints = List.from(_routePoints);
             _isLoadingRoute = false;
           });
           _fitMapToRoute();
@@ -187,20 +190,29 @@ class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
       _isLoadingRoute = true;
     });
 
-    // 1. Geocodificar la nueva dirección
+    // 1. Geocodificar la nueva dirección sin inventar coordenadas de fallback
     final newCoords = await _geocodeAddress(_currentDestAddress!);
     if (newCoords != null && mounted) {
-      setState(() => _endPoint = newCoords);
+      setState(() {
+        _endPoint = newCoords;
+        _hasEndCoords = true;
+      });
+      // 2. Trazar nueva ruta hacia el nuevo destino con OSRM
+      await _fetchRoute();
     } else {
-      final offsetLat = _startPoint.latitude + (_endPoint.latitude - _startPoint.latitude) * 0.8 + 0.007;
-      final offsetLng = _startPoint.longitude + (_endPoint.longitude - _startPoint.longitude) * 0.8 - 0.007;
       if (mounted) {
-        setState(() => _endPoint = LatLng(offsetLat, offsetLng));
+        setState(() => _isLoadingRoute = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No fue posible localizar el nuevo destino en la malla vial oficial.',
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
+      return;
     }
-
-    // 2. Trazar nueva ruta hacia el nuevo destino con OSRM
-    await _fetchRoute();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

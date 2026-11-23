@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../models/solicitud.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/invitado_service.dart';
+import '../../services/geocoding_service.dart';
+import '../../widgets/address_verification_field.dart';
 import '../client/services/searching_driver_screen.dart';
 
 // ─────────────────────────────────────────────
@@ -107,6 +109,8 @@ class _GuestRideFormScreenState extends State<GuestRideFormScreen> {
   // ─────────────────────────────────────────────
   final _origenController = TextEditingController();
   final _destinoController = TextEditingController();
+  GeocodingResult? _origenGeocoding;
+  GeocodingResult? _destinoGeocoding;
   final _observacionesController = TextEditingController();
   final DateTime _fechaProgramada = DateTime.now();
 
@@ -700,6 +704,16 @@ class _GuestRideFormScreenState extends State<GuestRideFormScreen> {
     final anioVal = int.tryParse(_vehiculoAnioController.text.trim());
     if (anioVal == null || anioVal < 1970 || anioVal > DateTime.now().year + 2) {
       _showError('El año del vehículo no es válido (ej: 2020).');
+      return;
+    }
+
+    if (_origenGeocoding?.state == GeocodingState.notFound) {
+      _showError('La dirección de origen no fue localizada en la malla vial oficial. Por favor revisa los datos.');
+      return;
+    }
+
+    if (_destinoGeocoding?.state == GeocodingState.notFound) {
+      _showError('La dirección de destino no fue localizada en la malla vial oficial. Por favor revisa los datos.');
       return;
     }
 
@@ -1680,45 +1694,32 @@ class _GuestRideFormScreenState extends State<GuestRideFormScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      TextFormField(
+                      AddressVerificationField(
                         controller: _origenController,
-                        style: const TextStyle(color: AppColors.textPrimary),
-                        decoration: _inputDecoration(
-                          label: 'Dirección o Punto de Origen',
-                          icon: Icons.my_location_rounded,
-                          iconColor: AppColors.slateGray,
-                        ),
-                        validator: (val) {
-                          final orig = val?.trim() ?? '';
-                          if (orig.isEmpty) {
-                            return 'Ingresa la dirección de origen';
-                          }
-                          if (orig.length < 4) {
-                            return 'Dirección de origen demasiado corta (mín. 4 caracteres)';
-                          }
-                          return null;
+                        label: 'Dirección o Punto de Origen',
+                        hint: 'Ej: Cl. 10 # 43E-15, Poblado',
+                        icon: Icons.my_location_rounded,
+                        iconColor: AppColors.slateGray,
+                        onResultChanged: (res) {
+                          _origenGeocoding = res;
                         },
                       ),
 
                       const SizedBox(height: 14),
 
-                      TextFormField(
+                      AddressVerificationField(
                         controller: _destinoController,
-                        style: const TextStyle(color: AppColors.textPrimary),
-                        decoration: _inputDecoration(
-                          label: 'Dirección o Punto de Destino',
-                          icon: Icons.location_on_rounded,
-                          iconColor: AppColors.accentOrange,
-                        ),
+                        label: 'Dirección o Punto de Destino',
+                        hint: 'Ej: Cra. 43A # 1-50, Envigado',
+                        icon: Icons.location_on_rounded,
+                        iconColor: AppColors.accentOrange,
+                        onResultChanged: (res) {
+                          _destinoGeocoding = res;
+                        },
                         validator: (val) {
                           final dest = val?.trim() ?? '';
-                          if (dest.isEmpty) {
-                            return 'Ingresa la dirección de destino';
-                          }
-                          if (dest.length < 4) {
-                            return 'Dirección de destino demasiado corta (mín. 4 caracteres)';
-                          }
-                          if (dest.toLowerCase() == _origenController.text.trim().toLowerCase()) {
+                          if (dest.toLowerCase() ==
+                              _origenController.text.trim().toLowerCase()) {
                             return 'El destino no puede ser igual al origen';
                           }
                           return null;
