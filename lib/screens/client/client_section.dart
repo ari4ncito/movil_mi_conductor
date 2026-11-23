@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../services/cliente_service.dart';
 import '../client/services/request_ride_screen.dart';
 import '../client/vehicles/my_vehicles_screen.dart';
 import '../shared/notifications_screen.dart';
@@ -35,9 +37,39 @@ class ClientSection extends StatefulWidget {
   State<ClientSection> createState() => _ClientSectionState();
 }
 
-class _ClientSectionState extends State<ClientSection> {
+class _ClientSectionState extends State<ClientSection>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
+  Timer? _sessionMonitorTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    if (!widget.isGuest) {
+      ClienteService.verificarEstadoCuentaActiva();
+      _sessionMonitorTimer = Timer.periodic(
+        const Duration(seconds: 6),
+        (_) => ClienteService.verificarEstadoCuentaActiva(),
+      );
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !widget.isGuest) {
+      ClienteService.verificarEstadoCuentaActiva();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _sessionMonitorTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
 
   final List<Widget> _screens = [
     const RequestRideScreen(),
