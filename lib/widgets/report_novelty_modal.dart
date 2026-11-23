@@ -7,6 +7,8 @@ import '../services/cloudinary_service.dart';
 import '../services/http_client.dart';
 import '../services/novedad_service.dart';
 import '../services/solicitud_service.dart';
+import '../services/geocoding_service.dart';
+import 'address_verification_field.dart';
 import 'xfile_image_widget.dart';
 
 /// Función auxiliar para desplegar el modal de reporte de novedades directamente
@@ -57,6 +59,7 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _newAddressController = TextEditingController();
+  GeocodingResult? _newAddressGeocoding;
 
   // Novedades normalizadas (incidentes puros)
   String _selectedKey = 'choque';
@@ -203,11 +206,22 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
 
     if (_cambiarRuta) {
       nuevaDireccion = _newAddressController.text.trim();
-      if (nuevaDireccion.isEmpty) {
+      final syntaxErr = GeocodingService.instance.validateSyntax(nuevaDireccion);
+      if (syntaxErr != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(syntaxErr),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+      if (_newAddressGeocoding?.state == GeocodingState.notFound) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Por favor ingresa la nueva dirección de destino.'),
+            content: Text('La nueva dirección no fue localizada en la malla vial oficial. Por favor verifícala.'),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -544,28 +558,15 @@ class _ReportNoveltyModalState extends State<ReportNoveltyModal> {
                       ),
                     ],
                     const SizedBox(height: 10),
-                    TextField(
+                    AddressVerificationField(
                       controller: _newAddressController,
-                      decoration: InputDecoration(
-                        hintText: 'Ej: Carrera 43A # 1-50, Medellín',
-                        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-                        filled: true,
-                        fillColor: Colors.white,
-                        prefixIcon: const Icon(Icons.location_on, color: Color(0xFF2E7D5B), size: 20),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF2E7D5B)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.green[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF2E7D5B), width: 1.8),
-                        ),
-                      ),
+                      label: 'Nueva Dirección de Destino',
+                      hint: 'Ej: Carrera 43A # 1-50, Medellín',
+                      icon: Icons.location_on,
+                      iconColor: const Color(0xFF2E7D5B),
+                      onResultChanged: (res) {
+                        _newAddressGeocoding = res;
+                      },
                     ),
                     const SizedBox(height: 6),
                     const Text(

@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import '../../../models/solicitud.dart';
 import '../../../services/solicitud_service.dart';
+import '../../../services/geocoding_service.dart';
 import 'client_arrival_confirmation_screen.dart';
 
 // ─────────────────────────────────────────────
@@ -39,7 +40,8 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
   bool _isLoadingRoute = true;
   final MapController _mapController = MapController();
   
-  // Coordenadas fallback (Medellín, Colombia)
+  bool _hasStartCoords = false;
+  bool _hasEndCoords = false;
   LatLng _startPoint = const LatLng(6.2442, -75.5812);
   LatLng _endPoint = const LatLng(6.2518, -75.5636);
 
@@ -116,45 +118,47 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
 
   Future<void> _initializeMapAndRoute() async {
     _lastKnownDestino = widget.solicitud?.destino;
-    // 1. Intentar obtener coordenadas reales
+    // 1. Obtener coordenadas reales mediante GeocodingService híbrido (4 fases)
     final originAddress = widget.solicitud?.origen;
     final destAddress = widget.solicitud?.destino;
 
     if (originAddress != null && originAddress.isNotEmpty) {
       final startCoords = await _geocodeAddress(originAddress);
       if (startCoords != null && mounted) {
-        setState(() => _startPoint = startCoords);
+        setState(() {
+          _startPoint = startCoords;
+          _hasStartCoords = true;
+        });
       }
     }
     if (destAddress != null && destAddress.isNotEmpty) {
       final endCoords = await _geocodeAddress(destAddress);
       if (endCoords != null && mounted) {
-        setState(() => _endPoint = endCoords);
+        setState(() {
+          _endPoint = endCoords;
+          _hasEndCoords = true;
+        });
       }
     }
 
-    // 2. Obtener ruta con OSRM
-    await _fetchRoute();
+    // 2. Obtener ruta con OSRM solo si ambas coordenadas están verificadas
+    if (_hasStartCoords && _hasEndCoords) {
+      await _fetchRoute();
+    } else {
+      if (mounted) {
+        setState(() => _isLoadingRoute = false);
+      }
+    }
   }
 
   Future<LatLng?> _geocodeAddress(String address) async {
     try {
-      final searchAddress = '$address, Medellín, Colombia';
-      final url = 'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(searchAddress)}&format=json&limit=1';
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {'User-Agent': 'MiConductorApp/1.0 (contact: support@miconductor.com)'},
-      );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body) as List;
-        if (data.isNotEmpty) {
-          final lat = double.parse(data[0]['lat'].toString());
-          final lon = double.parse(data[0]['lon'].toString());
-          return LatLng(lat, lon);
-        }
+      final result = await GeocodingService.instance.geocodeAddress(address);
+      if (result.hasCoordinates) {
+        return result.latLng;
       }
     } catch (e) {
-      debugPrint('Error geocoding address: $e');
+      debugPrint('Error en GeocodingService: $e');
     }
     return null;
   }
@@ -199,68 +203,44 @@ class _ClientDriverTrackingScreenState extends State<ClientDriverTrackingScreen>
       if (newCoords != null && mounted) {
         setState(() {
           _endPoint = newCoords;
+          _hasEndCoords = true;
           _isLoadingRoute = true;
           _isDetourActive = true;
         });
-      } else {
-        final offsetLat = _startPoint.latitude + (_endPoint.latitude - _startPoint.latitude) * 0.8 + 0.007;
-        final offsetLng = _startPoint.longitude + (_endPoint.longitude - _startPoint.longitude) * 0.8 - 0.007;
+        await _fetchRoute();
         if (mounted) {
-          setState(() {
-            _endPoint = LatLng(offsetLat, offsetLng);
-            _isLoadingRoute = true;
-            _isDetourActive = true;
-          });
-        }
-      }
-      await _fetchRoute();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.alt_route_rounded, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text('Ruta actualizada en el mapa: $nuevoDestino'),
-                ),
-              ],
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.alt_route_rounded, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Ruta actualizada en el mapa: $nuevoDestino'),
+                  ),
+                ],
+              ),
+              backgroundColor: AppColors.accentOrange,
+              duration: const Duration(seconds: 4),
             ),
-            backgroundColor: AppColors.accentOrange,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+          );
+        }
+      } else {
+        if (mounted) {
+          setState(() => _isLoadingRoute = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'El nuevo destino no pudo ser localizado en la malla vial oficial.',
+              ),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
       }
     } catch (e) {
-      debugPrint('Error en _actualizarRutaNuevoDestino: $e');
+      debugPrint('Error actualizando ruta por novedad: $e');
     }
-  }
-
-  Future<void> _recalcularRutaDesvio() async {
-    try {
-      final detourLat = (_startPoint.latitude + _endPoint.latitude) / 2 + 0.007;
-      final detourLng = (_startPoint.longitude + _endPoint.longitude) / 2 + 0.007;
-
-      final url =
-          'https://router.project-osrm.org/route/v1/driving/,;$detourLng,$detourLat;,?overview=full&geometries=geojson';
-      final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['routes'] != null && data['routes'].isNotEmpty) {
-          final geometry = data['routes'][0]['geometry'];
-          final List coordinates = geometry['coordinates'];
-          if (mounted) {
-            setState(() {
-              _routePoints = coordinates
-                  .map((coord) => LatLng(coord[1], coord[0]))
-                  .toList();
-            });
-            _fitMapToRoute();
-          }
-        }
-      }
-    } catch (_) {}
   }
 
   void _fitMapToRoute() {
