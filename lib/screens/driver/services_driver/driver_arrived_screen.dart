@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'driver_vehicle_evidence_screen.dart';
 import '../../../models/solicitud.dart';
 
@@ -25,6 +26,101 @@ class DriverArrivedScreen extends StatelessWidget {
   final Solicitud? solicitud;
   const DriverArrivedScreen({super.key, this.solicitud});
 
+  Future<void> _llamarCliente(BuildContext context, String? telefono) async {
+    final telLimpio = (telefono ?? '').replaceAll(RegExp(r'[^0-9+]'), '').trim();
+    if (telLimpio.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.petrolDark,
+          content: Text('El cliente no tiene un número telefónico registrado.'),
+        ),
+      );
+      return;
+    }
+    final uri = Uri.parse('tel:$telLimpio');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.petrolDark,
+            content: Text('No fue posible abrir la aplicación de llamadas para el número $telLimpio.'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _mostrarFotoVehiculo(BuildContext context, String fotoUrl, String titulo) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.85),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.white, size: 30),
+                onPressed: () => Navigator.of(ctx).pop(),
+              ),
+            ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: InteractiveViewer(
+                child: Image.network(
+                  fotoUrl,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return Container(
+                      height: 250,
+                      color: Colors.black26,
+                      child: const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 200,
+                    color: Colors.white12,
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.broken_image_rounded, color: Colors.white, size: 40),
+                          SizedBox(height: 8),
+                          Text(
+                            'No se pudo cargar la imagen',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              titulo,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final clientName = solicitud?.clienteNombre ?? 'Cliente';
@@ -40,7 +136,17 @@ class DriverArrivedScreen extends StatelessWidget {
         .where((s) => s.toString().isNotEmpty)
         .join(' · ');
 
-    final serviceType = solicitud?.tipoServicio ?? 'Servicio Estándar';
+    String? vehiculoFotoUrl;
+    if (vehicleData['foto'] != null && vehicleData['foto'].toString().isNotEmpty) {
+      vehiculoFotoUrl = vehicleData['foto'].toString();
+    } else if (vehicleData['foto1'] != null && vehicleData['foto1'].toString().isNotEmpty) {
+      vehiculoFotoUrl = vehicleData['foto1'].toString();
+    } else if (vehicleData['fotos'] is List && (vehicleData['fotos'] as List).isNotEmpty) {
+      vehiculoFotoUrl = (vehicleData['fotos'] as List).first?.toString();
+    } else if (vehicleData['tarjetaPropiedad'] != null && vehicleData['tarjetaPropiedad'].toString().isNotEmpty) {
+      vehiculoFotoUrl = vehicleData['tarjetaPropiedad'].toString();
+    }
+
     final clientNotes = solicitud?.descripcion;
 
     return Scaffold(
@@ -92,39 +198,7 @@ class DriverArrivedScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Badge de estado de llegada
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFA5D6A7)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_circle_rounded,
-                            color: Color(0xFF2E7D32),
-                            size: 18,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Has llegado al punto de recogida',
-                            style: TextStyle(
-                              color: Color(0xFF2E7D32),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 8),
 
                     // Tarjeta principal: Información del Cliente
                     Container(
@@ -209,12 +283,15 @@ class DriverArrivedScreen extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              // Botones de contacto
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 42,
-                                    height: 42,
+                              // Botón de llamada al cliente
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => _llamarCliente(context, solicitud?.clienteTelefono),
+                                  borderRadius: BorderRadius.circular(22),
+                                  child: Container(
+                                    width: 44,
+                                    height: 44,
                                     decoration: BoxDecoration(
                                       color: AppColors.background,
                                       shape: BoxShape.circle,
@@ -226,22 +303,7 @@ class DriverArrivedScreen extends StatelessWidget {
                                       size: 20,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    width: 42,
-                                    height: 42,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.background,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: AppColors.borderGray),
-                                    ),
-                                    child: const Icon(
-                                      Icons.message_outlined,
-                                      color: AppColors.petrolDark,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ],
                           ),
@@ -353,30 +415,8 @@ class DriverArrivedScreen extends StatelessWidget {
                             ],
                           ),
 
-                          const Divider(height: 28, color: AppColors.borderGray),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.stars_rounded,
-                                color: AppColors.accentOrange,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Servicio: $serviceType',
-                                  style: const TextStyle(
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-
                           if (vehicleDetails.isNotEmpty) ...[
-                            const SizedBox(height: 12),
+                            const Divider(height: 28, color: AppColors.borderGray),
                             Row(
                               children: [
                                 const Icon(
@@ -395,6 +435,64 @@ class DriverArrivedScreen extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                                if (vehiculoFotoUrl != null && vehiculoFotoUrl.isNotEmpty) ...[
+                                  const SizedBox(width: 10),
+                                  GestureDetector(
+                                    onTap: () => _mostrarFotoVehiculo(
+                                      context,
+                                      vehiculoFotoUrl!,
+                                      vehicleDetails.isNotEmpty ? vehicleDetails : 'Vehículo del cliente',
+                                    ),
+                                    child: Container(
+                                      width: 46,
+                                      height: 46,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: AppColors.accentOrange, width: 1.5),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.08),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8.5),
+                                        child: Stack(
+                                          fit: StackFit.expand,
+                                          children: [
+                                            Image.network(
+                                              vehiculoFotoUrl,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => const Icon(
+                                                Icons.directions_car_rounded,
+                                                size: 22,
+                                                color: AppColors.petrolDark,
+                                              ),
+                                            ),
+                                            Positioned(
+                                              bottom: 2,
+                                              right: 2,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.black.withOpacity(0.55),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.zoom_in,
+                                                  color: Colors.white,
+                                                  size: 11,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ],

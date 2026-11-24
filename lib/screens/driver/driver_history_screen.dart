@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../models/solicitud.dart';
 import '../../services/auth_service.dart';
 import '../../services/conductor_service.dart';
@@ -367,7 +367,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
 
     final statusColor = _obtenerColorEstado(sol.estado);
     final statusBgColor = _obtenerFondoEstado(sol.estado);
-    final estadoStr = (sol.estado ?? 'PENDIENTE').toUpperCase();
+    final estadoStr = (sol.estado ?? 'PENDIENTE').replaceAll('_', ' ').toUpperCase();
     final fechaStr = _formatDate(sol.fechaSolicitud ?? sol.createdAt);
     final fechaProgStr = sol.fechaProgramada != null
         ? _formatDate(sol.fechaProgramada)
@@ -633,18 +633,6 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                       ),
                       child: Column(
                         children: [
-                          _buildDetailRow(
-                            'Tipo de servicio',
-                            sol.tipoServicio ?? 'Estándar',
-                            Icons.category_outlined,
-                          ),
-                          const Divider(height: 16, color: AppColors.border),
-                          _buildDetailRow(
-                            'Prioridad',
-                            sol.prioridad ?? 'MEDIA',
-                            Icons.flag_outlined,
-                          ),
-                          const Divider(height: 16, color: AppColors.border),
                           _buildDetailRow(
                             'Fecha de solicitud',
                             fechaStr,

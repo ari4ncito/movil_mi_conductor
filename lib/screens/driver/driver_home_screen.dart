@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
@@ -476,7 +476,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       const Text(
-                                        'Â¡Servicio Asignado!',
+                                        '¡Servicio Asignado!',
                                         style: TextStyle(
                                           fontSize: 17,
                                           fontWeight: FontWeight.w800,
@@ -515,7 +515,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        (_solicitudAsignada!.estado ?? 'EN PROCESO').toUpperCase(),
+                                        (_solicitudAsignada!.estado ?? 'EN PROCESO').replaceAll('_', ' ').toUpperCase(),
                                         style: const TextStyle(
                                           color: Color(0xFF047857),
                                           fontWeight: FontWeight.w800,

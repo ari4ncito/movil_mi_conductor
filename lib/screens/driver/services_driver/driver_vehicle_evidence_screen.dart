@@ -475,7 +475,7 @@ class _DriverVehicleEvidenceScreenState
                             ),
                             SizedBox(width: 12),
                             Text(
-                              'Subiendo fotos a Cloudinary...',
+                              'Subiendo fotos...',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

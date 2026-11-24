@@ -11,6 +11,7 @@ class Novedad {
   final DateTime? fechaCierre;
   final String? observaciones;
   final String? evidenciaUrl;
+  final List<String>? fotosEvidencia;
   final String? estado;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -31,6 +32,7 @@ class Novedad {
     this.fechaCierre,
     this.observaciones,
     this.evidenciaUrl,
+    this.fotosEvidencia,
     this.estado,
     this.createdAt,
     this.updatedAt,
@@ -55,6 +57,7 @@ class Novedad {
     fechaCierre: _date(json['fechaCierre']),
     observaciones: _string(json['observaciones']),
     evidenciaUrl: _string(json['evidenciaUrl']),
+    fotosEvidencia: (json['fotosEvidencia'] as List?)?.map((e) => e.toString()).toList(),
     estado: _string(json['estado']),
     createdAt: _date(json['createdAt']),
     updatedAt: _date(json['updatedAt']),
@@ -72,6 +75,8 @@ class Novedad {
     if (fechaCierre != null) 'fechaCierre': fechaCierre!.toIso8601String(),
     if (observaciones != null) 'observaciones': observaciones,
     if (evidenciaUrl != null) 'evidenciaUrl': evidenciaUrl,
+    if (fotosEvidencia != null) 'fotosEvidencia': fotosEvidencia,
+    if (evidenciaUrl != null && fotosEvidencia == null) 'fotosEvidencia': [evidenciaUrl!],
     if (estado != null) 'estado': estado,
   };
 

@@ -1,8 +1,10 @@
 import '../../services/conductor_service.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../services/auth_service.dart';
 import '../../services/usuario_service.dart';
 import '../../services/cliente_service.dart';
+import '../../services/cloudinary_service.dart';
 import '../../utils/validators.dart';
 
 class AppColors {
@@ -45,7 +47,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String _rol = '';
   String? _usuarioId;
   String? _clienteId;
+  String? _conductorId;
   String? _fotoPerfil;
+  bool _isUploadingPhoto = false;
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -138,6 +142,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           if (_rol == 'CONDUCTOR') {
             try {
               final conductor = await ConductorService.obtenerPorUsuario(_usuarioId!);
+              _conductorId = conductor['_id']?.toString() ?? conductor['id']?.toString();
               final condFoto = conductor['fotoPerfil']?.toString() ?? '';
               if (condFoto.isNotEmpty) {
                 _fotoPerfil = condFoto;
@@ -319,10 +324,110 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  Future<void> _cambiarFotoPerfil() async {
+    try {
+      final picker = ImagePicker();
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Seleccionar foto de perfil',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.camera_alt_rounded, color: AppColors.petrolBase),
+                  title: const Text('Tomar foto con la cámara'),
+                  onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_rounded, color: AppColors.petrolBase),
+                  title: const Text('Elegir de la galería'),
+                  onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      if (source == null) return;
+
+      final pickedFile = await picker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1024,
+      );
+
+      if (pickedFile == null) return;
+
+      setState(() => _isUploadingPhoto = true);
+
+      // 1. Subir imagen a Cloudinary en folder perfiles
+      final photoUrl = await CloudinaryService.subirImagen(
+        pickedFile,
+        folder: 'perfiles',
+      );
+
+      // 2. Si es conductor, actualizar en Conductor
+      if (_rol == 'CONDUCTOR' && _conductorId != null) {
+        try {
+          await ConductorService.actualizar(_conductorId!, {
+            'fotoPerfil': photoUrl,
+          });
+        } catch (_) {}
+      }
+
+      // 3. Actualizar foto en la sesión local
+      final sessionUser = await AuthService.obtenerUsuario();
+      if (sessionUser != null) {
+        sessionUser['fotoPerfil'] = photoUrl;
+        sessionUser['foto'] = photoUrl;
+        await AuthService.guardarUsuario(sessionUser);
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _fotoPerfil = photoUrl;
+        _isUploadingPhoto = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Foto de perfil actualizada correctamente.'),
+          backgroundColor: AppColors.petrolBase,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isUploadingPhoto = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al subir la foto: $e'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final initials = (_nombreController.text.isNotEmpty ? _nombreController.text[0] : '') +
         (_apellidoController.text.isNotEmpty ? _apellidoController.text[0] : '');
+
+    final bool esConductor = _rol == 'CONDUCTOR' || _rol == 'CONDUCTORES';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -369,13 +474,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             label: 'Nombre',
                             hint: 'Ingresa tu nombre',
                             icon: Icons.badge_outlined,
+                            readOnly: esConductor,
                             textCapitalization: TextCapitalization.words,
                             validator: (val) {
                               if (val == null || val.trim().isEmpty) {
                                 return 'El nombre es obligatorio.';
-                              }
-                              if (val.trim().length < 2) {
-                                return 'Debe tener al menos 2 caracteres.';
                               }
                               return null;
                             },
@@ -386,19 +489,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             label: 'Apellido',
                             hint: 'Ingresa tu apellido',
                             icon: Icons.badge_outlined,
+                            readOnly: esConductor,
                             textCapitalization: TextCapitalization.words,
                             validator: (val) {
                               if (val == null || val.trim().isEmpty) {
                                 return 'El apellido es obligatorio.';
                               }
-                              if (val.trim().length < 2) {
-                                return 'Debe tener al menos 2 caracteres.';
-                              }
                               return null;
                             },
                           ),
                           const SizedBox(height: 16),
-                          _buildDropdownTipoDocumento(),
+                          _buildDropdownTipoDocumento(enabled: false),
                           const SizedBox(height: 16),
                           _buildTextField(
                             controller: _documentoController,
@@ -406,15 +507,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             hint: 'Ej. 1020304050',
                             icon: Icons.pin_outlined,
                             keyboardType: TextInputType.text,
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'El documento es obligatorio.';
-                              }
-                              if (val.trim().length < 5) {
-                                return 'Debe tener al menos 5 caracteres.';
-                              }
-                              return null;
-                            },
+                            readOnly: true,
                           ),
                         ],
                       ),
@@ -432,12 +525,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             hint: 'ejemplo@correo.com',
                             icon: Icons.email_outlined,
                             keyboardType: TextInputType.emailAddress,
+                            readOnly: esConductor,
                             validator: (val) {
                               if (val == null || val.trim().isEmpty) {
-                                return 'El correo es obligatorio.';
+                                return 'El correo electrónico es obligatorio.';
                               }
-                              final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                              if (!emailRegex.hasMatch(val.trim())) {
+                              if (!val.contains('@') || !val.contains('.')) {
                                 return 'Ingresa un correo electrónico válido.';
                               }
                               return null;
@@ -569,55 +662,92 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.petrolLight, AppColors.petrolDark],
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.petrolDark.withValues(alpha: 0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
+          GestureDetector(
+            onTap: _isUploadingPhoto ? null : _cambiarFotoPerfil,
+            child: Stack(
+              children: [
+                Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.petrolLight, AppColors.petrolDark],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.petrolDark.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: _isUploadingPhoto
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : (_fotoPerfil != null && _fotoPerfil!.isNotEmpty)
+                          ? ClipOval(
+                              child: Image.network(
+                                _fotoPerfil!,
+                                width: 76,
+                                height: 76,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Center(
+                                  child: initials.isNotEmpty
+                                      ? Text(
+                                          initials.toUpperCase(),
+                                          style: const TextStyle(
+                                            fontSize: 26,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.person, color: Colors.white, size: 40),
+                                ),
+                              ),
+                            )
+                          : Center(
+                              child: initials.isNotEmpty
+                                  ? Text(
+                                      initials.toUpperCase(),
+                                      style: const TextStyle(
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.person, color: Colors.white, size: 40),
+                            ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentOrange,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ],
             ),
-            child: (_fotoPerfil != null && _fotoPerfil!.isNotEmpty)
-                ? ClipOval(
-                    child: Image.network(
-                      _fotoPerfil!,
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Center(
-                        child: initials.isNotEmpty
-                            ? Text(
-                                initials.toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.person, color: Colors.white, size: 40),
-                      ),
-                    ),
-                  )
-                : Center(
-                    child: initials.isNotEmpty
-                        ? Text(
-                            initials.toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.person, color: Colors.white, size: 40),
-                  ),
           ),
           const SizedBox(width: 18),
           Expanded(
@@ -729,6 +859,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     required String label,
     required String hint,
     required IconData icon,
+    bool readOnly = false,
     TextInputType keyboardType = TextInputType.text,
     TextCapitalization textCapitalization = TextCapitalization.none,
     String? Function(String?)? validator,
@@ -736,35 +867,67 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (readOnly)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_outline, size: 12, color: Colors.grey.shade600),
+                    const SizedBox(width: 3),
+                    Text(
+                      'No editable',
+                      style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
+          readOnly: readOnly,
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,
           validator: validator,
-          style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+          style: TextStyle(
+            fontSize: 15,
+            color: readOnly ? AppColors.slateGray : AppColors.textPrimary,
+            fontWeight: readOnly ? FontWeight.w500 : FontWeight.normal,
+          ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: Color(0xFF9EACB2), fontSize: 14),
-            prefixIcon: Icon(icon, color: AppColors.slateGray, size: 20),
+            prefixIcon: Icon(icon, color: readOnly ? Colors.grey.shade400 : AppColors.slateGray, size: 20),
             filled: true,
-            fillColor: const Color(0xFFF7FAFA),
+            fillColor: readOnly ? const Color(0xFFECEFF1) : const Color(0xFFF7FAFA),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.borderGray),
+              borderSide: BorderSide(color: readOnly ? Colors.grey.shade300 : AppColors.borderGray),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.petrolBase, width: 1.5),
+              borderSide: BorderSide(
+                color: readOnly ? Colors.grey.shade300 : AppColors.petrolBase,
+                width: readOnly ? 1 : 1.5,
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -780,47 +943,84 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _buildDropdownTipoDocumento() {
+  Widget _buildDropdownTipoDocumento({bool enabled = true}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Tipo de Documento',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Tipo de Documento',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (!enabled)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_outline, size: 12, color: Colors.grey.shade600),
+                    const SizedBox(width: 3),
+                    Text(
+                      'No editable',
+                      style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
+          isExpanded: true,
           initialValue: _tiposDocumento.any((t) => t['value'] == _tipoDocumento) ? _tipoDocumento : 'CC',
-          style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+          style: TextStyle(
+            fontSize: 15,
+            color: enabled ? AppColors.textPrimary : AppColors.slateGray,
+            fontWeight: enabled ? FontWeight.normal : FontWeight.w500,
+          ),
           decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.assignment_ind_outlined, color: AppColors.slateGray, size: 20),
+            prefixIcon: Icon(Icons.assignment_ind_outlined, color: enabled ? AppColors.slateGray : Colors.grey.shade400, size: 20),
             filled: true,
-            fillColor: const Color(0xFFF7FAFA),
+            fillColor: enabled ? const Color(0xFFF7FAFA) : const Color(0xFFECEFF1),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.borderGray),
+              borderSide: BorderSide(color: enabled ? AppColors.borderGray : Colors.grey.shade300),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.petrolBase, width: 1.5),
+              borderSide: BorderSide(
+                color: enabled ? AppColors.petrolBase : Colors.grey.shade300,
+                width: enabled ? 1.5 : 1,
+              ),
             ),
           ),
           items: _tiposDocumento.map((tipo) {
             return DropdownMenuItem<String>(
               value: tipo['value'],
-              child: Text(tipo['label']!),
+              child: Text(
+                tipo['label']!,
+                overflow: TextOverflow.ellipsis,
+              ),
             );
           }).toList(),
-          onChanged: (val) {
-            if (val != null) {
-              setState(() => _tipoDocumento = val);
-            }
-          },
+          onChanged: enabled
+              ? (val) {
+                  if (val != null) {
+                    setState(() => _tipoDocumento = val);
+                  }
+                }
+              : null,
         ),
       ],
     );

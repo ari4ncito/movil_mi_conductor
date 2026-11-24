@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'screens/auth/auth_gate.dart';
 import 'screens/auth/reset_password_screen.dart';
 import 'services/fcm_service.dart';

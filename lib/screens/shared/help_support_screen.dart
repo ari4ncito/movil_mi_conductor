@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AppColors {
   static const Color background = Color(0xFFF2F5F6);
@@ -13,6 +14,32 @@ class AppColors {
 
 class HelpSupportScreen extends StatelessWidget {
   const HelpSupportScreen({super.key});
+
+  Future<void> _abrirCorreo(BuildContext context, String email) async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: email,
+      queryParameters: {
+        'subject': 'Soporte Mi Conductor',
+      },
+    );
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uri);
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo abrir el cliente de correo. Contacta a: $email'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +79,7 @@ class HelpSupportScreen extends StatelessWidget {
               const SizedBox(height: 16),
               _buildFAQItem(
                 question: '¿Cómo puedo cancelar un viaje?',
-                answer: 'Puedes cancelar un viaje desde la pantalla de "Viaje en curso" o desde el historial de viajes. Las cancelaciones gratuitas dependen del tiempo transcurrido desde la confirmación.',
+                answer: 'La cancelación del viaje solo la puede realizar el cliente directamente desde su aplicación o plataforma antes o durante el servicio.',
               ),
               const SizedBox(height: 24),
               // Contact section
@@ -66,15 +93,11 @@ class HelpSupportScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _buildContactOption(
-                icon: Icons.phone_rounded,
-                label: 'Llámanos',
-                value: '+52 55 1234 5678',
-              ),
-              const SizedBox(height: 12),
-              _buildContactOption(
+                context: context,
                 icon: Icons.email_rounded,
                 label: 'Correo Electrónico',
-                value: 'soporte@miconductor.com',
+                value: 'miconductor2025@gmail.com',
+                onTap: () => _abrirCorreo(context, 'miconductor2025@gmail.com'),
               ),
             ],
           ),
@@ -126,64 +149,79 @@ class HelpSupportScreen extends StatelessWidget {
   }
 
   Widget _buildContactOption({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required String value,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.petrolPale,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: AppColors.petrolBase,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                  ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.petrolPale,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
+                child: Icon(
+                  icon,
+                  color: AppColors.petrolBase,
+                  size: 24,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onTap != null)
+                const Icon(
+                  Icons.open_in_new_rounded,
+                  size: 20,
+                  color: AppColors.petrolBase,
+                ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

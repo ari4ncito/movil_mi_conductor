@@ -75,6 +75,19 @@ class Solicitud {
     return cliente ?? 'Cliente asignado';
   }
 
+  String? get clienteTelefono {
+    if (clienteData != null) {
+      final user = clienteData!['usuario'];
+      if (user is Map) {
+        final tel = user['telefono']?.toString();
+        if (tel != null && tel.isNotEmpty) return tel;
+      }
+      final tel = clienteData!['telefono']?.toString();
+      if (tel != null && tel.isNotEmpty) return tel;
+    }
+    return null;
+  }
+
   String get conductorNombre {
     if (conductorData != null) {
       final user = conductorData!['usuario'];

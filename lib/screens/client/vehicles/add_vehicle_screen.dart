@@ -97,7 +97,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
     const validTypes = [
       'Automóvil', 'Sedán', 'SUV', 'Camioneta',
-      'Hatchback', 'Pickup', 'Van', 'Moto', 'Otro'
+      'Hatchback', 'Pickup', 'Van', 'Otro'
     ];
     final rawType = v['tipoVehiculo']?.toString();
     if (rawType != null) {
@@ -1099,7 +1099,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             DropdownMenuItem(value: 'Hatchback', child: Text('Hatchback')),
                             DropdownMenuItem(value: 'Pickup', child: Text('Pickup')),
                             DropdownMenuItem(value: 'Van', child: Text('Van')),
-                            DropdownMenuItem(value: 'Moto', child: Text('Moto')),
                             DropdownMenuItem(value: 'Otro', child: Text('Otro')),
                           ],
                           onChanged: (val) => setState(() => _vehicleType = val),

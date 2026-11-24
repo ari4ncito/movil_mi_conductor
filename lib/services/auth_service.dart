@@ -103,6 +103,7 @@ class AuthService {
   ) async {
     http.Response response;
     try {
+      // Usar endpoint exclusivo para la aplicación móvil (permite CLIENTE y CONDUCTOR)
       response = await _postJson(
         Uri.parse('${ApiConfig.baseUrl}/auth/mobile-login'),
         body: {
@@ -163,7 +164,7 @@ class AuthService {
     http.Response response;
     try {
       response = await _postJson(
-        Uri.parse('${ApiConfig.baseUrl}/clientes'),
+        Uri.parse('${ApiConfig.baseUrl}/auth/register'),
         body: {
           'nombre': nombre,
           'apellido': apellido,
