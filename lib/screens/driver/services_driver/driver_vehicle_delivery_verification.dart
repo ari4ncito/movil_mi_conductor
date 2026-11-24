@@ -478,11 +478,15 @@ class _DriverVehicleDeliveryVerificationState
                               ),
                             ),
                             SizedBox(width: 12),
-                            Text(
-                              'Subiendo fotos a Cloudinary y finalizando...',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                            Flexible(
+                              child: Text(
+                                'Subiendo fotos y finalizando...',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],

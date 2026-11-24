@@ -391,33 +391,23 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
           onRefresh: _cargarUsuario,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 20),
-                const Text(
-                  'Mi Perfil',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.2,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
                 // Tarjeta de información del usuario
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
                   decoration: BoxDecoration(
                     color: AppColors.white,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.borderGray, width: 1),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.petrolDark.withOpacity(0.08),
-                        blurRadius: 12,
+                        color: const Color(0xFF0F3D44).withOpacity(0.04),
+                        blurRadius: 18,
                         offset: const Offset(0, 4),
                       ),
                     ],
@@ -442,116 +432,63 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
 
                             return Column(
                               children: [
-                                Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () {
-                                        if (avatarImage != null) {
-                                          _mostrarDialogoFotoAmpliada(currentFoto, localBytes);
-                                        } else {
-                                          _mostrarOpcionesFoto();
-                                        }
-                                      },
-                                      child: Container(
-                                        width: 104,
-                                        height: 104,
-                                        decoration: BoxDecoration(
-                                          gradient: const LinearGradient(
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                            colors: [AppColors.petrolLight, AppColors.petrolDark],
-                                          ),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(color: AppColors.white, width: 3),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: AppColors.petrolDark.withOpacity(0.28),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                          image: avatarImage != null
-                                              ? DecorationImage(
-                                                  image: avatarImage,
-                                                  fit: BoxFit.cover,
-                                                )
-                                              : null,
+                                GestureDetector(
+                                  onTap: () {
+                                    if (avatarImage != null) {
+                                      _mostrarDialogoFotoAmpliada(currentFoto, localBytes);
+                                    }
+                                  },
+                                  child: Container(
+                                    width: 88,
+                                    height: 88,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFF1B5A63), Color(0xFF0B3B4A)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF0F3D44).withOpacity(0.25),
+                                          blurRadius: 16,
+                                          offset: const Offset(0, 6),
                                         ),
-                                        child: _uploadingPhoto
-                                            ? Container(
-                                                decoration: BoxDecoration(
-                                                  color: Colors.black.withOpacity(0.45),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: const Center(
-                                                  child: SizedBox(
-                                                    width: 28,
-                                                    height: 28,
-                                                    child: CircularProgressIndicator(
-                                                      color: Colors.white,
-                                                      strokeWidth: 2.5,
+                                      ],
+                                      image: avatarImage != null
+                                          ? DecorationImage(
+                                              image: avatarImage,
+                                              fit: BoxFit.cover,
+                                            )
+                                          : null,
+                                    ),
+                                    child: avatarImage == null
+                                        ? Center(
+                                            child: _initials.isNotEmpty
+                                                ? Text(
+                                                    _initials,
+                                                    style: const TextStyle(
+                                                      fontSize: 30,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: AppColors.white,
                                                     ),
-                                                  ),
-                                                ),
-                                              )
-                                            : (avatarImage == null
-                                                ? Center(
-                                                    child: _initials.isNotEmpty
-                                                        ? Text(
-                                                            _initials,
-                                                            style: const TextStyle(
-                                                              fontSize: 34,
-                                                              fontWeight: FontWeight.bold,
-                                                              color: AppColors.white,
-                                                            ),
-                                                          )
-                                                        : const Icon(
-                                                            Icons.person,
-                                                            color: AppColors.white,
-                                                            size: 56,
-                                                          ),
                                                   )
-                                                : null),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      bottom: 0,
-                                      right: -2,
-                                      child: GestureDetector(
-                                        onTap: _uploadingPhoto ? null : _mostrarOpcionesFoto,
-                                        child: Container(
-                                          width: 34,
-                                          height: 34,
-                                          decoration: BoxDecoration(
-                                            color: AppColors.accentOrange,
-                                            shape: BoxShape.circle,
-                                            border: Border.all(color: AppColors.white, width: 2.5),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(0.2),
-                                                blurRadius: 6,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ],
-                                          ),
-                                          child: const Icon(
-                                            Icons.camera_alt_rounded,
-                                            color: AppColors.white,
-                                            size: 17,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                                : const Icon(
+                                                    Icons.person,
+                                                    color: AppColors.white,
+                                                    size: 44,
+                                                  ),
+                                          )
+                                        : null,
+                                  ),
                                 ),
-                                const SizedBox(height: 18),
+                                const SizedBox(height: 16),
                                 Text(
                                   _nombreCompleto,
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 21,
+                                    fontWeight: FontWeight.w800,
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
@@ -559,72 +496,42 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: AppColors.accentOrange.withOpacity(0.12),
+                                    color: const Color(0xFF10B981).withOpacity(0.12),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
-                                  child: const Text(
-                                    'Cliente verificado',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.accentOrange,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                Text(
-                                  _correo.isEmpty ? 'Sin correo registrado' : _correo,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.slateGray,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _telefono.isEmpty ? 'Sin teléfono registrado' : _telefono,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.slateGray,
-                                  ),
-                                ),
-                                if (_direccion.isNotEmpty) ...[
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(Icons.location_on_outlined, size: 15, color: AppColors.slateGray),
-                                      const SizedBox(width: 4),
-                                      Flexible(
-                                        child: Text(
-                                          _direccion,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: AppColors.slateGray,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                      Icon(Icons.verified_rounded, size: 14, color: Color(0xFF059669)),
+                                      SizedBox(width: 5),
+                                      Text(
+                                        'Cliente Verificado',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF059669),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ],
+                                ),
                               ],
                             );
                           },
                         ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 // Opciones del perfil
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: AppColors.white,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.borderGray, width: 1),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.petrolDark.withOpacity(0.08),
-                        blurRadius: 12,
+                        color: const Color(0xFF0F3D44).withOpacity(0.04),
+                        blurRadius: 18,
                         offset: const Offset(0, 4),
                       ),
                     ],
@@ -632,7 +539,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                   child: Column(
                     children: [
                       _buildProfileOption(
-                        icon: Icons.edit,
+                        icon: Icons.edit_rounded,
                         label: 'Editar Perfil',
                         onTap: () async {
                           final updated = await Navigator.of(context).push(
@@ -645,29 +552,24 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                           }
                         },
                       ),
-                      Container(
-                        width: double.infinity,
-                        height: 1,
-                        color: AppColors.borderGray,
-                      ),
+                      const Divider(height: 1, indent: 20, endIndent: 20, color: Color(0xFFF1F5F9)),
                       _buildProfileOption(
-                        icon: Icons.location_on,
-                        label: 'Direcciónes Favoritas',
-                        onTap: () {
-                          Navigator.of(context).push(
+                        icon: Icons.location_on_rounded,
+                        label: 'Direcciones Favoritas',
+                        onTap: () async {
+                          final updated = await Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) => const FavoriteAddressesScreen(),
                             ),
                           );
+                          if (updated == true) {
+                            _cargarUsuario();
+                          }
                         },
                       ),
-                      Container(
-                        width: double.infinity,
-                        height: 1,
-                        color: AppColors.borderGray,
-                      ),
+                      const Divider(height: 1, indent: 20, endIndent: 20, color: Color(0xFFF1F5F9)),
                       _buildProfileOption(
-                        icon: Icons.help_outline,
+                        icon: Icons.help_outline_rounded,
                         label: 'Ayuda y Soporte',
                         onTap: () {
                           Navigator.of(context).push(
@@ -677,13 +579,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                           );
                         },
                       ),
-                      Container(
-                        width: double.infinity,
-                        height: 1,
-                        color: AppColors.borderGray,
-                      ),
+                      const Divider(height: 1, indent: 20, endIndent: 20, color: Color(0xFFF1F5F9)),
                       _buildProfileOption(
-                        icon: Icons.settings,
+                        icon: Icons.settings_rounded,
                         label: 'Configuración',
                         onTap: () {
                           Navigator.of(context).push(
@@ -693,11 +591,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                           );
                         },
                       ),
-                      Container(
-                        width: double.infinity,
-                        height: 1,
-                        color: AppColors.borderGray,
-                      ),
+                      const Divider(height: 1, indent: 20, endIndent: 20, color: Color(0xFFF1F5F9)),
                       _buildProfileOption(
                         icon: Icons.privacy_tip_outlined,
                         label: 'Términos y Políticas',
@@ -774,6 +668,65 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     );
   }
 
+  Widget _buildInfoTile({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.petrolBase.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: AppColors.petrolBase,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.slateGray,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProfileOption({
     required IconData icon,
     required String label,
@@ -805,15 +758,15 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 label,
                 style: const TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
               ),
             ),
             const Icon(
-              Icons.chevron_right,
-              color: AppColors.slateGray,
-              size: 24,
+              Icons.chevron_right_rounded,
+              color: AppColors.petrolBase,
+              size: 22,
             ),
           ],
         ),

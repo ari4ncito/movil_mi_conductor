@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import 'driver_home_screen.dart';
 import 'driver_history_screen.dart';
@@ -40,6 +40,20 @@ class _DriverSectionState extends State<DriverSection> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
   String _nombreConductor = '';
+  String _apellidoConductor = '';
+  String _fotoPerfil = '';
+
+  String get _initials {
+    final n = _nombreConductor.trim();
+    final a = _apellidoConductor.trim();
+    if (n.isNotEmpty && a.isNotEmpty) {
+      return '${n[0]}${a[0]}'.toUpperCase();
+    }
+    if (n.isNotEmpty) {
+      return n.substring(0, n.length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return 'C';
+  }
 
   @override
   void initState() {
@@ -52,8 +66,23 @@ class _DriverSectionState extends State<DriverSection> {
       final user = await AuthService.obtenerUsuario();
       if (user != null && mounted) {
         final nombre = user['nombre']?.toString() ?? '';
+        final apellido = user['apellido']?.toString() ?? '';
+        String foto = user['fotoPerfil']?.toString() ?? user['foto']?.toString() ?? '';
+        final usuarioId = user['_id'] ?? user['id'];
+        if (usuarioId != null) {
+          try {
+            final conductor = await ConductorService.obtenerPorUsuario(usuarioId.toString());
+            final condFoto = conductor['fotoPerfil']?.toString() ?? '';
+            if (condFoto.isNotEmpty) {
+              foto = condFoto;
+            }
+          } catch (_) {}
+        }
+        if (!mounted) return;
         setState(() {
           _nombreConductor = nombre;
+          _apellidoConductor = apellido;
+          _fotoPerfil = foto;
         });
       }
     } catch (_) {}
@@ -141,18 +170,46 @@ class _DriverSectionState extends State<DriverSection> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1B5A63), Color(0xFF0B3B4A)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               shape: BoxShape.circle,
               border: Border.all(
-                color: Colors.white.withOpacity(0.25),
-                width: 1,
+                color: Colors.white.withOpacity(0.3),
+                width: 1.5,
               ),
             ),
-            child: const Icon(
-              Icons.directions_car_rounded,
-              color: AppColors.white,
-              size: 20,
-            ),
+            child: _fotoPerfil.isNotEmpty
+                ? ClipOval(
+                    child: Image.network(
+                      _fotoPerfil,
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Text(
+                          _initials,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : Center(
+                    child: Text(
+                      _initials,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -360,6 +417,20 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
   String _licencia = '';
   String _categoria = '';
   String _experiencia = '';
+  String _fotoPerfil = '';
+  Map<String, dynamic>? _conductorData;
+
+  String get _initials {
+    final n = _nombre.trim();
+    final a = _apellido.trim();
+    if (n.isNotEmpty && a.isNotEmpty) {
+      return '${n[0]}${a[0]}'.toUpperCase();
+    }
+    if (n.isNotEmpty) {
+      return n.substring(0, n.length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return 'C';
+  }
 
   @override
   void initState() {
@@ -394,9 +465,17 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
           _telefono = usuario['telefono']?.toString() ?? '';
           
           if (conductor != null) {
+            _conductorData = conductor;
             _licencia = conductor['licencia']?.toString() ?? '';
             _categoria = conductor['categoriaLicencia']?.toString() ?? conductor['categoria']?.toString() ?? '';
             _experiencia = conductor['experiencia']?.toString() ?? '0';
+            final condFoto = conductor['fotoPerfil']?.toString() ?? '';
+            if (condFoto.isNotEmpty) {
+              _fotoPerfil = condFoto;
+            }
+          }
+          if (_fotoPerfil.isEmpty) {
+            _fotoPerfil = usuario['fotoPerfil']?.toString() ?? usuario['foto']?.toString() ?? '';
           }
           
           _loading = false;
@@ -438,10 +517,11 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.white,
                   borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.textPrimary.withOpacity(0.06),
-                      blurRadius: 12,
+                      color: const Color(0xFF0F3D44).withOpacity(0.04),
+                      blurRadius: 18,
                       offset: const Offset(0, 4),
                     ),
                   ],
@@ -455,67 +535,110 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                     : Column(
                         children: [
                           Container(
-                            width: 100,
-                            height: 100,
-                            decoration: const BoxDecoration(
-                              color: AppColors.petrolBase,
+                            width: 88,
+                            height: 88,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF1B5A63), Color(0xFF0B3B4A)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
                               shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF0F3D44).withOpacity(0.25),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
                             ),
-                            child: const Icon(
-                              Icons.person,
-                              color: AppColors.white,
-                              size: 56,
-                            ),
+                            child: _fotoPerfil.isNotEmpty
+                                ? ClipOval(
+                                    child: Image.network(
+                                      _fotoPerfil,
+                                      width: 88,
+                                      height: 88,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Center(
+                                        child: Text(
+                                          _initials,
+                                          style: const TextStyle(
+                                            fontSize: 30,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Text(
+                                      _initials,
+                                      style: const TextStyle(
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.white,
+                                      ),
+                                    ),
+                                  ),
                           ),
 
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 16),
 
                           Text(
                             _nombreCompleto,
                             textAlign: TextAlign.center,
                             style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 21,
+                              fontWeight: FontWeight.w800,
                               color: AppColors.textPrimary,
                             ),
                           ),
 
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
 
-                          Text(
-                            _correo.isEmpty ? 'Sin correo' : _correo,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.slateGray,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.verified_rounded, size: 14, color: Color(0xFF059669)),
+                                SizedBox(width: 5),
+                                Text(
+                                  'Conductor Verificado',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF059669),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
 
-                          const SizedBox(height: 4),
 
-                          Text(
-                            _telefono.isEmpty ? 'Sin teléfono' : _telefono,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.slateGray,
-                            ),
-                          ),
                         ],
                       ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               if (!_loading) ...[
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: AppColors.white,
                     borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.textPrimary.withOpacity(0.06),
-                        blurRadius: 12,
+                        color: const Color(0xFF0F3D44).withOpacity(0.04),
+                        blurRadius: 18,
                         offset: const Offset(0, 4),
                       ),
                     ],
@@ -523,64 +646,91 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Datos del conductor',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 3.5,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: AppColors.accentOrange,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Datos del conductor',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       InkWell(
                         onTap: () => _mostrarLicencias(context),
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: AppColors.petrolPale,
+                            color: const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
                           ),
                           child: Row(
                             children: [
                               Container(
-                                width: 40,
-                                height: 40,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.white,
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: AppColors.petrolBase.withOpacity(0.12),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
-                                  Icons.badge_outlined,
+                                  Icons.badge_rounded,
                                   color: AppColors.petrolBase,
                                   size: 20,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 14),
                               const Expanded(
-                                child: Text(
-                                  'Ver mis licencias',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.petrolBase,
-                                  ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Licencias de conducción',
+                                      style: TextStyle(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Toca para ver o verificar vigencias',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.slateGray,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const Icon(
-                                Icons.chevron_right,
+                                Icons.chevron_right_rounded,
                                 color: AppColors.petrolBase,
+                                size: 22,
                               ),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      _datoConductor(Icons.timer_outlined, 'Experiencia', '$_experiencia años'),
+
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
               ],
 
               Container(
@@ -588,10 +738,11 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.white,
                   borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.textPrimary.withOpacity(0.06),
-                      blurRadius: 12,
+                      color: const Color(0xFF0F3D44).withOpacity(0.04),
+                      blurRadius: 18,
                       offset: const Offset(0, 4),
                     ),
                   ],
@@ -599,7 +750,7 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                 child: Column(
                   children: [
                     _buildProfileOption(
-                      icon: Icons.edit,
+                      icon: Icons.edit_rounded,
                       label: 'Editar Perfil',
                       onTap: () async {
                         final updated = await Navigator.of(context).push(
@@ -613,14 +764,10 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                       },
                     ),
 
-                    Container(
-                      width: double.infinity,
-                      height: 1,
-                      color: AppColors.borderGray,
-                    ),
+                    const Divider(height: 1, indent: 20, endIndent: 20, color: Color(0xFFF1F5F9)),
 
                     _buildProfileOption(
-                      icon: Icons.help_outline,
+                      icon: Icons.help_outline_rounded,
                       label: 'Ayuda y Soporte',
                       onTap: () {
                         Navigator.of(context).push(
@@ -631,14 +778,10 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                       },
                     ),
 
-                    Container(
-                      width: double.infinity,
-                      height: 1,
-                      color: AppColors.borderGray,
-                    ),
+                    const Divider(height: 1, indent: 20, endIndent: 20, color: Color(0xFFF1F5F9)),
 
                     _buildProfileOption(
-                      icon: Icons.settings,
+                      icon: Icons.settings_rounded,
                       label: 'Configuración',
                       onTap: () {
                         Navigator.of(context).push(
@@ -672,19 +815,27 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade600,
+                    backgroundColor: const Color(0xFFEF4444),
                     foregroundColor: AppColors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(18),
                     ),
                   ),
-                  child: const Text(
-                    'Cerrar Sesión',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.logout_rounded, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Cerrar Sesión',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -707,22 +858,22 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
       borderRadius: BorderRadius.circular(24),
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: 20,
+          horizontal: 20,
+          vertical: 18,
         ),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                color: AppColors.petrolPale,
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.petrolBase.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 color: AppColors.petrolBase,
-                size: 22,
+                size: 20,
               ),
             ),
             const SizedBox(width: 16),
@@ -731,22 +882,21 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                 label,
                 style: const TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
               ),
             ),
             const Icon(
-              Icons.chevron_right,
-              color: AppColors.slateGray,
-              size: 24,
+              Icons.chevron_right_rounded,
+              color: Color(0xFF94A3B8),
+              size: 22,
             ),
           ],
         ),
       ),
     );
   }
-
   Widget _datoConductor(IconData icon, String titulo, String valor) {
     return Row(
       children: [
@@ -792,16 +942,61 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
   }
 
   void _mostrarLicencias(BuildContext context) {
+    // Extraer lista de licencias o usar la principal
+    final List<Map<String, dynamic>> licencias = [];
+    if (_conductorData != null) {
+      final rawList = _conductorData!['licencias'];
+      if (rawList is List && rawList.isNotEmpty) {
+        for (var item in rawList) {
+          if (item is Map) {
+            licencias.add(Map<String, dynamic>.from(item));
+          }
+        }
+      }
+    }
+
+    if (licencias.isEmpty && _licencia.isNotEmpty) {
+      licencias.add({
+        'numero': _licencia,
+        'categoria': _categoria.isNotEmpty ? _categoria : 'B1',
+        'fechaExpedicion': _conductorData?['fechaExpedicion'],
+        'fechaVencimiento': _conductorData?['fechaVencimiento'],
+        'lugarExpedicion': _conductorData?['lugarExpedicion'] ?? '',
+        'fotoLicencia': _conductorData?['fotoLicencia'],
+      });
+    }
+
+    String formatearFecha(dynamic f) {
+      if (f == null) return 'No registrada';
+      final s = f.toString();
+      if (s.isEmpty) return 'No registrada';
+      try {
+        final dt = DateTime.parse(s).toLocal();
+        const meses = [
+          'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+          'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+        ];
+        final dia = dt.day.toString().padLeft(2, '0');
+        final mes = meses[dt.month - 1];
+        return '$dia $mes ${dt.year}';
+      } catch (_) {
+        return s.split('T').first;
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -816,95 +1011,257 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'Mis Licencias',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Mis Licencias',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (licencias.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.petrolPale,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${licencias.length} ${licencias.length == 1 ? 'licencia' : 'licencias'}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.petrolBase,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.borderGray),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.textPrimary.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _licencia.isEmpty ? 'Sin registro' : _licencia,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.petrolBase,
-                        ),
+            Flexible(
+              child: licencias.isEmpty
+                  ? Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.borderGray),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.petrolPale,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _categoria.isEmpty ? 'N/A' : _categoria,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.petrolBase,
+                      child: const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.badge_outlined, size: 40, color: AppColors.slateGray),
+                          SizedBox(height: 8),
+                          Text(
+                            'No tienes licencias registradas actualmente.',
+                            style: TextStyle(fontSize: 14, color: AppColors.slateGray),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Fecha de expedición', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                          const Text('01 Ene 2020', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                         ],
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text('Fecha de vencimiento', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                          const Text('01 Ene 2025', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Lugar de expedición', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                      const Text('Secretaría de Movilidad, Bogotá', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                    ],
-                  ),
-                ],
-              ),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: licencias.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final lic = licencias[index];
+                        final numLic = lic['numero']?.toString() ??
+                            lic['licencia']?.toString() ??
+                            _licencia;
+                        final catLic = lic['categoria']?.toString() ??
+                            lic['categoriaLicencia']?.toString() ??
+                            _categoria;
+                        final fExp = formatearFecha(lic['fechaExpedicion']);
+                        final fVenc = formatearFecha(lic['fechaVencimiento']);
+                        final lugar = lic['lugarExpedicion']?.toString().trim();
+                        final fotoLic = lic['fotoLicencia']?.toString() ??
+                            _conductorData?['fotoLicencia']?.toString();
+
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.borderGray),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.textPrimary.withValues(alpha: 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      numLic.isEmpty ? 'Sin registro' : numLic,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.petrolBase,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.petrolPale,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      catLic.isEmpty ? 'N/A' : catLic,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.petrolBase,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              const Divider(height: 1),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Fecha de expedición', style: TextStyle(fontSize: 11.5, color: Colors.grey[500])),
+                                      const SizedBox(height: 2),
+                                      Text(fExp, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text('Fecha de vencimiento', style: TextStyle(fontSize: 11.5, color: Colors.grey[500])),
+                                      const SizedBox(height: 2),
+                                      Text(fVenc, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              if (lugar != null && lugar.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Lugar de expedición', style: TextStyle(fontSize: 11.5, color: Colors.grey[500])),
+                                    const SizedBox(height: 2),
+                                    Text(lugar, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ],
+                              if (fotoLic != null && fotoLic.isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                const Divider(height: 1),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Documento digital de la licencia',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.slateGray,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => Dialog(
+                                        backgroundColor: Colors.transparent,
+                                        insetPadding: const EdgeInsets.all(16),
+                                        child: Stack(
+                                          alignment: Alignment.topRight,
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(16),
+                                              child: Image.network(
+                                                fotoLic,
+                                                fit: BoxFit.contain,
+                                                errorBuilder: (_, __, ___) => Container(
+                                                  color: Colors.white,
+                                                  padding: const EdgeInsets.all(24),
+                                                  child: const Text('No se pudo cargar la imagen de la licencia'),
+                                                ),
+                                              ),
+                                            ),
+                                            IconButton(
+                                              style: IconButton.styleFrom(
+                                                backgroundColor: Colors.black54,
+                                                foregroundColor: Colors.white,
+                                              ),
+                                              icon: const Icon(Icons.close),
+                                              onPressed: () => Navigator.pop(ctx),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      height: 140,
+                                      width: double.infinity,
+                                      color: const Color(0xFFF1F5F9),
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Image.network(
+                                            fotoLic,
+                                            height: 140,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => const Center(
+                                              child: Text('Documento digital registrado'),
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withValues(alpha: 0.55),
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.zoom_in, color: Colors.white, size: 16),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'Tocar para ampliar',
+                                                  style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -920,10 +1277,10 @@ class _DriverProfileScreenState extends State<_DriverProfileScreen> {
                 child: const Text('Cerrar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
-            const SafeArea(child: SizedBox(height: 16)),
+            const SafeArea(child: SizedBox(height: 8)),
           ],
         ),
       ),
     );
   }
-}
+}

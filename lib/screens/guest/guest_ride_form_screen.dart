@@ -1358,7 +1358,7 @@ class _GuestRideFormScreenState extends State<GuestRideFormScreen> {
                           SizedBox(
                             width: 95,
                             child: DropdownButtonFormField<String>(
-                              value: _beneficiarioTipoDoc,
+                              initialValue: _beneficiarioTipoDoc,
                               isExpanded: true,
                               dropdownColor: Colors.white,
                               style: const TextStyle(
@@ -1530,7 +1530,7 @@ class _GuestRideFormScreenState extends State<GuestRideFormScreen> {
                             SizedBox(
                               width: 95,
                               child: DropdownButtonFormField<String>(
-                                value: _solicitanteTipoDoc,
+                                initialValue: _solicitanteTipoDoc,
                                 isExpanded: true,
                                 dropdownColor: Colors.white,
                                 style: const TextStyle(

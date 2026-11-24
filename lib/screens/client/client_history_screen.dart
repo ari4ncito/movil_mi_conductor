@@ -3,6 +3,9 @@ import '../../models/solicitud.dart';
 import '../../services/http_client.dart';
 import '../../services/solicitud_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/cliente_service.dart';
+import 'services/client_driver_tracking_screen.dart';
+import 'services/searching_driver_screen.dart';
 
 // ============================================================
 // PALETA DE COLORES — Azul Petróleo (misma paleta del proyecto)
@@ -54,29 +57,73 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
       final userEmail = usuario?['correo']?.toString().toLowerCase().trim();
       final userId = usuario?['id']?.toString() ?? usuario?['_id']?.toString();
 
-      final list = await _service.listar(
-        clienteId: widget.clienteId,
-        correoCliente: userEmail,
-      );
+      // Intentar obtener el registro cliente actual para resolver el ID de la entidad Cliente
+      String? clienteId = widget.clienteId;
+      if (clienteId == null || clienteId.isEmpty) {
+        try {
+          final clienteData = await ClienteService.obtenerClienteActual();
+          if (clienteData != null) {
+            clienteId = (clienteData['_id'] ?? clienteData['id'])?.toString();
+          }
+        } catch (_) {}
+      }
 
-      // Filtrar estrictamente para mostrar solo las solicitudes asociadas al usuario actual
-      if (userEmail != null || userId != null) {
+      // Consultar solicitudes pasando filtros flexibles
+      List<Solicitud> list = [];
+      try {
+        list = await _service.listar(
+          clienteId: clienteId,
+          correoCliente: userEmail,
+        );
+      } catch (_) {
+        // Reintentar sin clienteId por si el backend filtra estrictamente por correo
+        list = await _service.listar(
+          correoCliente: userEmail,
+        );
+      }
+
+      // Si aún no trae nada pero tenemos el ID de cliente, probar buscando por cliente
+      if (list.isEmpty && clienteId != null && clienteId.isNotEmpty) {
+        try {
+          final byCliente = await _service.listar(clienteId: clienteId);
+          if (byCliente.isNotEmpty) {
+            list = byCliente;
+          }
+        } catch (_) {}
+      }
+
+      // Filtrar para mostrar las solicitudes que pertenezcan a este cliente
+      if (userEmail != null || userId != null || clienteId != null) {
         _solicitudes = list.where((s) {
+          // Coincidencia por correo
           if (userEmail != null && s.correoCliente != null) {
             if (s.correoCliente!.toLowerCase().trim() == userEmail) return true;
           }
-          final cUser = s.clienteData?['usuario'];
-          if (cUser != null) {
-            final cUserId = (cUser is Map)
-                ? (cUser['_id'] ?? cUser['id'])
-                : cUser;
-            if (cUserId?.toString() == userId) return true;
+          // Coincidencia por ID de entidad Cliente
+          if (clienteId != null && s.clienteId != null) {
+            if (s.clienteId == clienteId) return true;
           }
-          if (widget.clienteId != null && s.clienteId == widget.clienteId) {
-            return true;
+          if (s.clienteData != null) {
+            final cId = s.clienteData?['_id'] ?? s.clienteData?['id'];
+            if (cId != null && clienteId != null && cId.toString() == clienteId) {
+              return true;
+            }
+            final cUser = s.clienteData?['usuario'];
+            if (cUser != null) {
+              final cUserId = (cUser is Map)
+                  ? (cUser['_id'] ?? cUser['id'])
+                  : cUser;
+              if (cUserId?.toString() == userId) return true;
+            }
           }
           return false;
         }).toList();
+
+        // Si el filtro estricto resultó vacío pero el backend ya nos devolvió una lista con nuestros parámetros,
+        // no descartar las solicitudes recibidas
+        if (_solicitudes.isEmpty && list.isNotEmpty) {
+          _solicitudes = list;
+        }
       } else {
         _solicitudes = list;
       }
@@ -94,132 +141,97 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
+        child: RefreshIndicator(
+          onRefresh: _loadSolicitudes,
+          color: AppColors.petrol,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
 
-              const Text(
-                'Historial de\nServicios',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.petrolDark,
-                  letterSpacing: 0.2,
+                const Text(
+                  'Historial de\nServicios',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.petrolDark,
+                    letterSpacing: 0.2,
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 8),
+                const SizedBox(height: 22),
 
-              const Text(
-                'Viajes realizados y pedidos anteriores',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
+                // Tarjeta de estadística estéticamente diseñada
+                _buildStatBanner(
+                  icon: Icons.directions_car_rounded,
+                  count: _completedCount.toString(),
+                  title: 'Viajes Realizados',
+                  subtitle: 'Servicios completados exitosamente',
+                ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-              // Tarjetas de estadísticas
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      icon: Icons.check_circle_outline,
-                      value: _completedCount.toString(),
-                      label: 'Servicios Completados',
-                      color: AppColors.petrol,
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  Expanded(
-                    child: _buildStatCard(
-                      icon: Icons.directions_car,
-                      value: _solicitudes.length.toString(),
-                      label: 'Viajes',
-                      color: AppColors.petrolLight,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      icon: Icons.star,
-                      value: '5.0 ★',
-                      label: 'Calificación Promedio',
-                      color: AppColors.accent,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 28),
-
-              // Lista de viajes
-              Row(
-                children: [
-                  Container(
-                    width: 3,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: AppColors.accent,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  const Text(
-                    'Viajes Recientes',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              if (_isLoading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              else if (_error != null)
-                _buildStatusMessage(_error!, onRetry: _loadSolicitudes)
-              else if (_solicitudes.isEmpty)
-                _buildStatusMessage('Aún no tienes solicitudes registradas.')
-              else
-                ..._solicitudes.map(
-                  (solicitud) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _buildTripCard(
-                      solicitud: solicitud,
-                      date: _formatDate(
-                        solicitud.fechaSolicitud ?? solicitud.createdAt,
+                // Encabezado de la lista
+                Row(
+                  children: [
+                    Container(
+                      width: 3.5,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: AppColors.accent,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                      driver: solicitud.conductorNombre,
-                      from: solicitud.origen ?? 'Origen no disponible',
-                      to: solicitud.destino ?? 'Destino no disponible',
-                      rating: solicitud.calificacionConductor ?? 0,
-                      status: solicitud.estado,
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Viajes Recientes',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ],
                 ),
 
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 16),
+
+                if (_isLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 40),
+                      child: CircularProgressIndicator(color: AppColors.petrol),
+                    ),
+                  )
+                else if (_error != null)
+                  _buildStatusMessage(_error!, onRetry: _loadSolicitudes)
+                else if (_solicitudes.isEmpty)
+                  _buildEmptyState()
+                else
+                  ..._solicitudes.map(
+                    (solicitud) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildTripCard(
+                        solicitud: solicitud,
+                        date: _formatDate(
+                          solicitud.fechaSolicitud ?? solicitud.createdAt,
+                        ),
+                        driver: solicitud.conductorNombre,
+                        from: solicitud.origen ?? 'Origen no disponible',
+                        to: solicitud.destino ?? 'Destino no disponible',
+                        rating: solicitud.calificacionConductor ?? 0,
+                        status: solicitud.estado,
+                      ),
+                    ),
+                  ),
+
+                const SizedBox(height: 28),
+              ],
+            ),
           ),
         ),
       ),
@@ -230,16 +242,81 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
       .where((item) => (item.estado ?? '').toLowerCase().contains('complet'))
       .length;
 
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F3D44).withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.petrol.withOpacity(0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.directions_car_filled_outlined,
+              color: AppColors.petrol,
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Sin viajes registrados aún',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Cuando solicites un conductor, podrás consultar aquí el resumen y detalle de todos tus traslados.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatusMessage(String message, {VoidCallback? onRetry}) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 32),
         child: Column(
           children: [
-            Text(message, textAlign: TextAlign.center),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
             if (onRetry != null) ...[
               const SizedBox(height: 12),
-              TextButton(onPressed: onRetry, child: const Text('Reintentar')),
+              TextButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Reintentar'),
+                style: TextButton.styleFrom(foregroundColor: AppColors.petrol),
+              ),
             ],
           ],
         ),
@@ -256,72 +333,80 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
         '${local.minute.toString().padLeft(2, '0')}';
   }
 
-  Widget _buildStatCard({
+  Widget _buildStatBanner({
     required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
+    required String count,
+    required String title,
+    required String subtitle,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.petrolDark.withOpacity(0.06),
-            blurRadius: 12,
+            color: const Color(0xFF0F3D44).withOpacity(0.04),
+            blurRadius: 14,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F3D44).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.directions_car_rounded,
+              color: Color(0xFF0F3D44),
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF16262D),
                   ),
                 ),
-
-                const SizedBox(height: 4),
-
+                const SizedBox(height: 2),
                 Text(
-                  label,
+                  subtitle,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-
-          const SizedBox(width: 12),
-
           Container(
-            width: 44,
-            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              shape: BoxShape.circle,
-              border: Border.all(color: color.withOpacity(0.25), width: 1),
+              color: const Color(0xFF0F3D44),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: color, size: 24),
+            child: Text(
+              count,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
           ),
         ],
       ),
@@ -339,22 +424,23 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
   }) {
     final statusColor = _obtenerColorEstado(status);
     final statusBgColor = _obtenerFondoEstado(status);
+    final estadoStr = (status ?? 'PENDIENTE').replaceAll('_', ' ').toUpperCase();
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => _mostrarDetallesViaje(solicitud),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: [
               BoxShadow(
-                color: AppColors.petrolDark.withOpacity(0.06),
-                blurRadius: 12,
+                color: const Color(0xFF0F3D44).withOpacity(0.05),
+                blurRadius: 14,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -362,149 +448,78 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header de tarjeta con fecha y botón 'Ver detalles'
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Flexible(
-                    child: Text(
-                      date,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 14,
+                        color: Colors.grey[500],
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      const SizedBox(width: 6),
+                      Text(
+                        date,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
-                  if (status != null && status.trim().isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusBgColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: statusColor.withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        status.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          color: statusColor,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              Row(
-                children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [AppColors.petrolLight, AppColors.petrolDark],
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.petrolDark.withOpacity(0.25),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
+                      color: AppColors.petrol.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.petrol.withOpacity(0.12)),
                     ),
-                    child: const Icon(
-                      Icons.drive_eta,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
+                        Icon(Icons.visibility_rounded, size: 14, color: AppColors.petrol),
+                        SizedBox(width: 5),
                         Text(
-                          driver == 'Sin conductor asignado' || driver.isEmpty
-                              ? 'Sin conductor asignado'
-                              : 'Conductor: $driver',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                          'Ver detalles',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.petrol,
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-
-                        const SizedBox(height: 4),
-
-                        Row(
-                          children: [
-                            for (int i = 0; i < 5; i++)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 2),
-                                child: Icon(
-                                  Icons.star,
-                                  color: i < rating
-                                      ? AppColors.accent
-                                      : Colors.grey[300],
-                                  size: 16,
-                                ),
-                              ),
-                          ],
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
-
               const SizedBox(height: 16),
-
-              Container(width: double.infinity, height: 1, color: AppColors.border),
-
-              const SizedBox(height: 16),
-
-              // Ruta
+              // Timeline de la ruta
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Column(
                     children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: AppColors.petrolLight,
-                          shape: BoxShape.circle,
-                        ),
+                      const Icon(
+                        Icons.radio_button_checked,
+                        color: Color(0xFF10B981),
+                        size: 16,
                       ),
-
-                      Container(width: 2, height: 24, color: AppColors.border),
-
                       Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: AppColors.accent,
-                          shape: BoxShape.circle,
-                        ),
+                        width: 2,
+                        height: 26,
+                        color: const Color(0xFFCBD5E1),
+                      ),
+                      const Icon(
+                        Icons.location_on_rounded,
+                        color: Color(0xFFFF8A00),
+                        size: 18,
                       ),
                     ],
                   ),
-
                   const SizedBox(width: 12),
-
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -512,69 +527,107 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
                         Text(
                           from,
                           style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1E293B),
                           ),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          maxLines: 2,
                         ),
-
-                        const SizedBox(height: 8),
-
+                        const SizedBox(height: 14),
                         Text(
                           to,
                           style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1E293B),
                           ),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          maxLines: 2,
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
-
               const SizedBox(height: 14),
-
-              // Botón Ver Detalle
+              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              const SizedBox(height: 14),
+              // Pie de la tarjeta con conductor y estado
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  InkWell(
-                    onTap: () => _mostrarDetallesViaje(solicitud),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.petrol.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppColors.petrol.withOpacity(0.18),
-                          width: 1,
-                        ),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF1B5A63), Color(0xFF0F3D44)],
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.visibility_outlined,
-                            size: 16,
-                            color: AppColors.petrol,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.drive_eta_rounded, color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          driver.isNotEmpty ? driver : 'Sin conductor asignado',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF16262D),
                           ),
-                          SizedBox(width: 6),
-                          Text(
-                            'Ver detalle',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (rating > 0)
+                          Row(
+                            children: [
+                              for (int i = 0; i < rating; i++)
+                                const Icon(Icons.star_rounded, color: Colors.amber, size: 13),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$rating.0',
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          const Text(
+                            'Conductor Mi Conductor',
                             style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.petrol,
+                              fontSize: 11.5,
+                              color: Color(0xFF64748B),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusBgColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: statusColor.withOpacity(0.25)),
+                    ),
+                    child: Text(
+                      estadoStr,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: statusColor,
                       ),
                     ),
                   ),
@@ -624,7 +677,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
   void _mostrarDetallesViaje(Solicitud solicitud) {
     final statusColor = _obtenerColorEstado(solicitud.estado);
     final statusBgColor = _obtenerFondoEstado(solicitud.estado);
-    final estadoStr = (solicitud.estado ?? 'PENDIENTE').toUpperCase();
+    final estadoStr = (solicitud.estado ?? 'PENDIENTE').replaceAll('_', ' ').toUpperCase();
     final fechaStr = _formatDate(solicitud.fechaSolicitud ?? solicitud.createdAt);
     final fechaProgStr = solicitud.fechaProgramada != null
         ? _formatDate(solicitud.fechaProgramada)
@@ -891,18 +944,6 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
                       child: Column(
                         children: [
                           _buildDetailRow(
-                            'Tipo de servicio',
-                            solicitud.tipoServicio ?? 'Estándar',
-                            Icons.category_outlined,
-                          ),
-                          const Divider(height: 16, color: AppColors.border),
-                          _buildDetailRow(
-                            'Prioridad',
-                            solicitud.prioridad ?? 'MEDIA',
-                            Icons.flag_outlined,
-                          ),
-                          const Divider(height: 16, color: AppColors.border),
-                          _buildDetailRow(
                             'Fecha de solicitud',
                             fechaStr,
                             Icons.calendar_today_outlined,
@@ -1019,28 +1060,83 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
               ),
             ),
 
-            // Botón de cerrar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 10, 24, 24),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.petrol,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+            // Botones de acción (Reanudar viaje si no ha concluido / Cerrar)
+            Builder(
+              builder: (buttonContext) {
+                final est = (solicitud.estado ?? '').toUpperCase();
+                final esActiva = est != 'COMPLETADO' &&
+                    est != 'COMPLETADA' &&
+                    est != 'FINALIZADO' &&
+                    est != 'CANCELADO' &&
+                    est != 'CANCELADA';
+
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 10, 24, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (esActiva) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              if (est == 'PENDIENTE') {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => SearchingDriverScreen(solicitud: solicitud),
+                                  ),
+                                );
+                              } else {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ClientDriverTrackingScreen(solicitud: solicitud),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.navigation_rounded, color: Colors.white, size: 20),
+                            label: const Text(
+                              'Ir a la Solicitud / Viaje en Curso',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.accent,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.petrol,
+                            side: const BorderSide(color: AppColors.border),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cerrar',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text(
-                    'Cerrar',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
+                );
+              },
             ),
           ],
         ),

@@ -5,12 +5,7 @@ class ApiConfig {
   const ApiConfig._();
 
   static String get _fallbackUrl {
-    if (kIsWeb) return 'http://localhost:3000/api';
-    try {
-      // Con 'adb reverse tcp:3000 tcp:3000', localhost:3000 en el celular apunta directo a la PC
-      if (Platform.isAndroid) return 'http://localhost:3000/api';
-    } catch (_) {}
-    return 'http://localhost:3000/api';
+    return 'https://backend-miconductor.onrender.com/api';
   }
 
   /// Override with `--dart-define=API_BASE_URL=https://...` per environment.

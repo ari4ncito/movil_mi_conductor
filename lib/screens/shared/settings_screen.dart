@@ -104,13 +104,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Seguridad y Cuenta',
                 children: [
                   _buildSimpleOption(
-                    icon: Icons.lock_rounded,
-                    label: 'Cambiar Contraseña',
-                    iconColor: const Color(0xFF12566B), // App's dark teal
-                    onTap: _abrirCambiarPassword,
-                  ),
-                  const Divider(height: 1, indent: 64, color: Color(0xFFE0E0E0)),
-                  _buildSimpleOption(
                     icon: Icons.no_accounts_rounded,
                     label: 'Eliminar Cuenta',
                     isDestructive: true,
