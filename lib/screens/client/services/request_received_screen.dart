@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../driver/services_driver/driver_assigned_screen.dart';
+import 'client_driver_tracking_screen.dart';
 
 // ─────────────────────────────────────────────
 // Paleta de la app: azul petróleo, escalas de azul oscuro,
@@ -172,7 +172,7 @@ class RequestReceivedScreen extends StatelessWidget {
                               // Ir a pantalla de conductor asignado
                               Navigator.of(context).pushReplacement(
                                 MaterialPageRoute(
-                                  builder: (context) => const DriverAssignedScreen(),
+                                  builder: (context) => const ClientDriverTrackingScreen(),
                                 ),
                               );
                             },
@@ -244,7 +244,7 @@ class RequestReceivedScreen extends StatelessWidget {
               children: [
                 Text(
                   label1,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.slateGray,
                     fontWeight: FontWeight.w600,
@@ -299,7 +299,7 @@ class RequestReceivedScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             label1,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 10,
               color: AppColors.slateGray,
               fontWeight: FontWeight.w600,

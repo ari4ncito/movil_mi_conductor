@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../services/auth_service.dart';
+import '../../services/cliente_service.dart';
 import '../client/services/request_ride_screen.dart';
 import '../client/vehicles/my_vehicles_screen.dart';
+import '../shared/notifications_screen.dart';
 import 'client_history_screen.dart';
 import 'client_profile_screen.dart';
 
@@ -34,9 +38,78 @@ class ClientSection extends StatefulWidget {
   State<ClientSection> createState() => _ClientSectionState();
 }
 
-class _ClientSectionState extends State<ClientSection> {
+class _ClientSectionState extends State<ClientSection>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
+  Timer? _sessionMonitorTimer;
+  String _nombreCliente = '';
+  String _fotoPerfil = '';
+
+  String get _initials {
+    final n = _nombreCliente.trim();
+    if (n.isNotEmpty) {
+      final parts = n.split(' ');
+      if (parts.length >= 2 && parts[1].isNotEmpty) {
+        return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      }
+      return n.substring(0, n.length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return 'C';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _cargarDatosCliente();
+    if (!widget.isGuest) {
+      ClienteService.verificarEstadoCuentaActiva();
+      _sessionMonitorTimer = Timer.periodic(
+        const Duration(seconds: 6),
+        (_) => ClienteService.verificarEstadoCuentaActiva(),
+      );
+    }
+  }
+
+  Future<void> _cargarDatosCliente() async {
+    try {
+      final user = await AuthService.obtenerUsuario();
+      if (user != null && mounted) {
+        final nombre = user['nombre']?.toString() ?? '';
+        final apellido = user['apellido']?.toString() ?? '';
+        String foto = user['fotoPerfil']?.toString() ?? user['foto']?.toString() ?? '';
+        try {
+          final cliente = await ClienteService.obtenerClienteActual();
+          if (cliente != null) {
+            final cFoto = cliente['foto']?.toString() ?? '';
+            if (cFoto.isNotEmpty) foto = cFoto;
+          }
+        } catch (_) {}
+
+        if (!mounted) return;
+        setState(() {
+          _nombreCliente = '$nombre $apellido'.trim().isNotEmpty ? '$nombre $apellido'.trim() : nombre;
+          _fotoPerfil = foto;
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !widget.isGuest) {
+      ClienteService.verificarEstadoCuentaActiva();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _sessionMonitorTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
 
   final List<Widget> _screens = [
     const RequestRideScreen(),
@@ -126,18 +199,52 @@ class _ClientSectionState extends State<ClientSection> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1B5A63), Color(0xFF0B3B4A)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               shape: BoxShape.circle,
               border: Border.all(
-                color: Colors.white.withOpacity(0.25),
-                width: 1,
+                color: Colors.white.withOpacity(0.3),
+                width: 1.5,
               ),
             ),
-            child: const Icon(
-              Icons.local_taxi_rounded,
-              color: AppColors.white,
-              size: 20,
-            ),
+            child: widget.isGuest
+                ? const Icon(
+                    Icons.local_taxi_rounded,
+                    color: AppColors.white,
+                    size: 20,
+                  )
+                : (_fotoPerfil.isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(
+                          _fotoPerfil,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Center(
+                            child: Text(
+                              _initials,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          _initials,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      )),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -146,7 +253,11 @@ class _ClientSectionState extends State<ClientSection> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  widget.isGuest ? 'Modo Invitado' : 'Bienvenido',
+                  widget.isGuest
+                      ? 'MI CONDUCTOR'
+                      : (_nombreCliente.isNotEmpty
+                          ? 'Bienvenido, ${_nombreCliente.split(' ').first}'
+                          : 'Bienvenido'),
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 17,
@@ -156,9 +267,7 @@ class _ClientSectionState extends State<ClientSection> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  widget.isGuest
-                      ? 'Explorando sin cuenta'
-                      : '¡Qué gusto tenerte de vuelta!',
+                  widget.isGuest ? 'Modo Invitado' : '¡Listo para viajar!',
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w400,
@@ -191,6 +300,22 @@ class _ClientSectionState extends State<ClientSection> {
             ),
         ],
       ),
+      actions: [
+        if (!widget.isGuest)
+          IconButton(
+            icon: const Icon(Icons.notifications_none, color: AppColors.white),
+            tooltip: 'Notificaciones',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(),
+                ),
+              );
+            },
+          ),
+        const SizedBox(width: 8),
+      ],
     );
   }
 

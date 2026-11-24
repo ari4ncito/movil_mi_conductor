@@ -1,358 +1,940 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'driver_report_novelty_screen.dart';
-import '../../shared/arrived_destination_screen.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http;
+import '../../../models/solicitud.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/geocoding_service.dart';
+import 'driver_arrived_screen.dart';
+import 'driver_vehicle_delivery_verification.dart';
+import '../../../widgets/report_novelty_modal.dart';
 
-class DriverNavigationScreen extends StatelessWidget {
-  const DriverNavigationScreen({super.key});
+// ─────────────────────────────────────────────
+// Paleta de la app: azul petróleo, escalas de azul oscuro,
+// grises y un acento en naranja.
+// (Misma paleta usada en el resto de las pantallas del proyecto.)
+// ─────────────────────────────────────────────
+class AppColors {
+  static const Color background = Color(0xFFF2F5F6);
+  static const Color petrolDark = Color(0xFF0B3B4A);
+  static const Color petrolBase = Color(0xFF12566B);
+  static const Color petrolLight = Color(0xFF1D7A94);
+  static const Color petrolPale = Color(0xFFE7F0F2);
+  static const Color slateGray = Color(0xFF5C6B73);
+  static const Color borderGray = Color(0xFFE1E7E9);
+  static const Color textPrimary = Color(0xFF16262D);
+  static const Color accentOrange = Color(0xFFE8821E);
+  static const Color accentOrangeSoft = Color(0xFFFBE3CB);
+  static const Color white = Colors.white;
+  static const Color success = Color(0xFF2E7D5B); // verde para "punto de origen"
+}
+
+class DriverNavigationScreen extends StatefulWidget {
+  final Solicitud? solicitud;
+  final bool isDrivingToDestination;
+
+  const DriverNavigationScreen({
+    super.key,
+    this.solicitud,
+    this.isDrivingToDestination = false,
+  });
+
+  @override
+  State<DriverNavigationScreen> createState() => _DriverNavigationScreenState();
+}
+
+class _DriverNavigationScreenState extends State<DriverNavigationScreen> {
+  List<LatLng> _routePoints = [];
+  bool _isLoadingRoute = true;
+  bool _isDetourActive = false;
+  String? _detourReason;
+  String? _currentDestAddress;
+  bool _isCardMinimized = false;
+  final MapController _mapController = MapController();
+  
+  bool _hasStartCoords = false;
+  bool _hasEndCoords = false;
+  LatLng _startPoint = const LatLng(6.2442, -75.5812);
+  LatLng _endPoint = const LatLng(6.2518, -75.5636);
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeMapAndRoute();
+  }
+
+  Future<void> _initializeMapAndRoute() async {
+    // 1. Obtener coordenadas reales mediante GeocodingService híbrido (4 fases)
+    _currentDestAddress ??= widget.solicitud?.destino;
+    final originAddress = widget.solicitud?.origen;
+    final destAddress = _currentDestAddress ?? widget.solicitud?.destino;
+
+    if (originAddress != null && originAddress.isNotEmpty) {
+      final startCoords = await _geocodeAddress(originAddress);
+      if (startCoords != null && mounted) {
+        setState(() {
+          _startPoint = startCoords;
+          _hasStartCoords = true;
+        });
+      }
+    }
+    if (destAddress != null && destAddress.isNotEmpty) {
+      final endCoords = await _geocodeAddress(destAddress);
+      if (endCoords != null && mounted) {
+        setState(() {
+          _endPoint = endCoords;
+          _hasEndCoords = true;
+        });
+      }
+    }
+
+    // 2. Obtener ruta con OSRM solo si ambas ubicaciones están verificadas
+    if (_hasStartCoords && _hasEndCoords) {
+      await _fetchRoute();
+    } else {
+      if (mounted) {
+        setState(() => _isLoadingRoute = false);
+      }
+    }
+  }
+
+  Future<LatLng?> _geocodeAddress(String address) async {
+    try {
+      final result = await GeocodingService.instance.geocodeAddress(address);
+      if (result.hasCoordinates) {
+        return result.latLng;
+      }
+    } catch (e) {
+      debugPrint('Error en GeocodingService: $e');
+    }
+    return null;
+  }
+
+  Future<void> _fetchRoute() async {
+    try {
+      final url =
+          'https://router.project-osrm.org/route/v1/driving/${_startPoint.longitude},${_startPoint.latitude};${_endPoint.longitude},${_endPoint.latitude}?overview=full&geometries=geojson';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['routes'] != null && data['routes'].isNotEmpty) {
+          final geometry = data['routes'][0]['geometry'];
+          final List coordinates = geometry['coordinates'];
+          setState(() {
+            _routePoints = coordinates
+                .map((coord) => LatLng(coord[1], coord[0]))
+                .toList();
+            _isLoadingRoute = false;
+          });
+          _fitMapToRoute();
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching route: $e');
+    }
+    
+    // Fallback a línea recta en caso de error
+    if (mounted) {
+      setState(() {
+        _routePoints = [_startPoint, _endPoint];
+        _isLoadingRoute = false;
+      });
+      _fitMapToRoute();
+    }
+  }
+
+  void _fitMapToRoute() {
+    if (_routePoints.isNotEmpty) {
+      final bounds = LatLngBounds.fromPoints(_routePoints);
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: bounds,
+          padding: const EdgeInsets.all(50.0),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openReportNovelty(BuildContext context) async {
+    final usuarioId = await AuthService.obtenerUsuarioId();
+    final conductorId = widget.solicitud?.conductorId ??
+        widget.solicitud?.conductorData?['_id'] ??
+        widget.solicitud?.conductorData?['id'];
+
+    if (!context.mounted) return;
+    final result = await showReportNoveltyModal(
+      context,
+      solicitudId: widget.solicitud?.id,
+      conductorId: conductorId?.toString(),
+      usuarioId: usuarioId,
+      destinoActual: _currentDestAddress ?? widget.solicitud?.destino,
+    );
+
+    if (result != null && result['cambioRuta'] == true) {
+      final nuevaDir = result['nuevaDireccion'] as String?;
+      final motivo = result['motivo'] as String? ?? 'Incidente en vía';
+      await _aplicarCambioDeRuta(nuevaDir, motivo);
+    }
+  }
+
+  Future<void> _aplicarCambioDeRuta(String? nuevaDireccion, String motivo) async {
+    if (nuevaDireccion == null || nuevaDireccion.trim().isEmpty) return;
+
+    setState(() {
+      _currentDestAddress = nuevaDireccion.trim();
+      _isDetourActive = true;
+      _detourReason = motivo;
+      _isLoadingRoute = true;
+    });
+
+    // 1. Geocodificar la nueva dirección sin inventar coordenadas de fallback
+    final newCoords = await _geocodeAddress(_currentDestAddress!);
+    if (newCoords != null && mounted) {
+      setState(() {
+        _endPoint = newCoords;
+        _hasEndCoords = true;
+      });
+      // 2. Trazar nueva ruta hacia el nuevo destino con OSRM
+      await _fetchRoute();
+    } else {
+      if (mounted) {
+        setState(() => _isLoadingRoute = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No fue posible localizar el nuevo destino en la malla vial oficial.',
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.alt_route_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Ruta cambiada hacia: $_currentDestAddress',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF12566B),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  void _restaurarRutaOriginal() {
+    setState(() {
+      _currentDestAddress = widget.solicitud?.destino;
+      _isDetourActive = false;
+      _detourReason = null;
+      _isLoadingRoute = true;
+    });
+    _initializeMapAndRoute();
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Extraer datos reales del cliente y vehículo
+    final clientName = widget.solicitud?.clienteNombre ?? 'Cliente';
+    final vehicleData = widget.solicitud?.vehiculoData ?? {};
+    final marca = vehicleData['marca'] ?? 'Vehículo';
+    final modelo = vehicleData['modelo'] ?? '';
+    final placa = vehicleData['placa'] ?? '';
+    final color = vehicleData['color'] ?? '';
+    final vehicleDetails = [marca, modelo, placa, color].where((s) => s.toString().isNotEmpty).join(' · ');
+
+    final originAddress = widget.solicitud?.origen ?? 'Punto de Origen';
+    final destAddress = _currentDestAddress ?? widget.solicitud?.destino ?? 'Punto de Destino';
+
     return Scaffold(
       body: Stack(
         children: [
-          // Map background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF1A1A2E),
-                  Color(0xFF0F0F1A),
-                ],
+          // Mapa real con OpenStreetMap
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _startPoint,
+              initialZoom: 13.0,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.mi_conductor',
               ),
-            ),
-            child: CustomPaint(
-              painter: RouteMapPainter(),
-              size: Size.infinite,
-            ),
-          ),
-
-          // Tarjeta de indicaciones de giro (Google Maps style)
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Header + Directions card
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Top row: back button + earnings/status + profile
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Botón de menú/back
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5F7FA),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.arrow_back,
-                                color: Colors.black,
-                                size: 24,
-                              ),
-                            ),
-
-                            // Ganancias y estado
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5F7FA),
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    '\$428.50',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE8F5E9),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Text(
-                                      'ONLINE',
-                                      style: TextStyle(
-                                        color: Color(0xFF2E7D32),
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Botón de perfil
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5F7FA),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.person,
-                                color: Colors.black,
-                                size: 24,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        // Directions info
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Icono de giro
-                            Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFF8A00),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.arrow_forward,
-                                color: Colors.white,
-                                size: 36,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            // Text info
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'IN 200M',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Gira a la derecha en Av. Reforma',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  // Tiempo y distancia (bottom part of directions)
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.access_time, size: 18, color: Colors.grey),
-                                          const SizedBox(width: 4),
-                                          const Text(
-                                            '14:32',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFF8A00),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: const Text(
-                                          '12 min',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.route, size: 18, color: Colors.grey),
-                                          const SizedBox(width: 4),
-                                          const Text(
-                                            '4.2 km',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Botones circulares en el lado derecho
-          SafeArea(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Botón reportar novedad
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: IconButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const DriverReportNoveltyScreen(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(
-                          Icons.warning_amber_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Botón mi ubicación
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.my_location,
-                        color: Colors.black,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Botón capas
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.layers,
-                        color: Colors.black,
-                        size: 24,
-                      ),
+              if (!_isLoadingRoute)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _routePoints,
+                      color: _isDetourActive ? AppColors.accentOrange : AppColors.petrolLight,
+                      strokeWidth: _isDetourActive ? 5.5 : 5.0,
                     ),
                   ],
                 ),
-              ),
-            ),
-          ),
-
-          // Botón para finalizar viaje
-          SafeArea(
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const ArrivedDestinationScreen(),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: _startPoint,
+                    width: 20,
+                    height: 20,
+                    child: const CircleAvatar(
+                      backgroundColor: AppColors.success,
+                      radius: 10,
+                      child: CircleAvatar(
+                        backgroundColor: Colors.white,
+                        radius: 8,
+                        child: CircleAvatar(
+                          backgroundColor: AppColors.success,
+                          radius: 5,
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF8A00),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                    ),
-                    child: const Text(
-                      'Llegué al Destino',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
+                  Marker(
+                    point: _endPoint,
+                    width: 20,
+                    height: 20,
+                    child: const CircleAvatar(
+                      backgroundColor: AppColors.accentOrange,
+                      radius: 10,
+                      child: CircleAvatar(
+                        backgroundColor: Colors.white,
+                        radius: 8,
+                        child: CircleAvatar(
+                          backgroundColor: AppColors.accentOrange,
+                          radius: 5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // Header
+          SafeArea(
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.petrolDark.withAlpha(30),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                      ),
+                      const Text(
+                        'Mi Conductor',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.petrolDark,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.petrolDark.withAlpha(30),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.warning_amber_rounded, color: AppColors.accentOrange),
+                          tooltip: 'Reportar Novedad',
+                          onPressed: () => _openReportNovelty(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.fiber_manual_record,
+                        color: widget.isDrivingToDestination
+                            ? const Color(0xFF2E7D5B)
+                            : AppColors.accentOrange,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.isDrivingToDestination
+                            ? 'VIAJE EN PROCESO · EN RUTA AL DESTINO'
+                            : 'EN CAMINO AL PUNTO DE RECOGIDA',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: widget.isDrivingToDestination
+                              ? const Color(0xFF2E7D5B)
+                              : AppColors.accentOrange,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_isDetourActive)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.petrolDark,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: AppColors.accentOrange,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.alt_route_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Nuevo destino: ${_currentDestAddress ?? "Cambio de ruta"}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  'Por ${_detourReason ?? "incidente en vía"} · Cliente notificado',
+                                  style: const TextStyle(
+                                    color: Color(0xFFCFD8DC),
+                                    fontSize: 11,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _restaurarRutaOriginal,
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFFFFB74D),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                            child: const Text('Restaurar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+
+
+          // Tarjeta inferior con info del cliente y viaje (Minimizable para ver el mapa)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeInOut,
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.borderGray, width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.petrolDark.withAlpha(40),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: _isCardMinimized ? 12 : 20,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Manija para arrastrar / tocar y minimizar o expandir
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isCardMinimized = !_isCardMinimized;
+                        });
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[350],
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    if (_isCardMinimized) ...[
+                      // VISTA MINIMIZADA (Para ver el mapa completo)
+                      Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: AppColors.petrolPale,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.accentOrange,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.person_rounded,
+                              color: AppColors.petrolDark,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  clientName,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  widget.isDrivingToDestination
+                                      ? 'En ruta · Destino final'
+                                      : 'Punto de recogida · En camino',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.slateGray,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.keyboard_arrow_up_rounded,
+                              size: 30,
+                              color: AppColors.petrolDark,
+                            ),
+                            tooltip: 'Expandir información',
+                            onPressed: () {
+                              setState(() {
+                                _isCardMinimized = false;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(24),
+                            gradient: const LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [AppColors.petrolBase, AppColors.petrolDark],
+                            ),
+                          ),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (widget.isDrivingToDestination) {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        DriverVehicleDeliveryVerification(
+                                      solicitud: widget.solicitud,
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => DriverArrivedScreen(
+                                      solicitud: widget.solicitud,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: AppColors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                            ),
+                            child: Text(
+                              widget.isDrivingToDestination
+                                  ? 'Finalizar / Entregar Vehículo'
+                                  : 'Confirmar Llegada (Punto de Recogida)',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      // VISTA EXPANDIDA COMPLETA
+                      Row(
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: AppColors.petrolPale,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.accentOrange,
+                                width: 2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.person_rounded,
+                              color: AppColors.petrolDark,
+                              size: 30,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.accentOrangeSoft,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        'CLIENTE',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.accentOrange,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  clientName,
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  vehicleDetails.isEmpty
+                                      ? 'Vehículo del servicio'
+                                      : vehicleDetails,
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    color: AppColors.slateGray,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 30,
+                              color: AppColors.petrolDark,
+                            ),
+                            tooltip: 'Minimizar para ver mapa',
+                            onPressed: () {
+                              setState(() {
+                                _isCardMinimized = true;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Info del viaje
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.borderGray,
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.success,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    originAddress,
+                                    style: const TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 5.5),
+                              child: Container(
+                                height: 18,
+                                width: 2,
+                                color: AppColors.borderGray,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.accentOrange,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    destAddress,
+                                    style: const TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Botón para Reportar Novedad
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _openReportNovelty(context),
+                          icon: const Icon(
+                            Icons.warning_amber_rounded,
+                            color: AppColors.accentOrange,
+                            size: 18,
+                          ),
+                          label: const Text(
+                            'Reportar Novedad',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.petrolDark,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(
+                              color: AppColors.accentOrange,
+                              width: 1.5,
+                            ),
+                            backgroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Botón para confirmar llegada / entregar vehículo
+                      SizedBox(
+                        width: double.infinity,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(30),
+                            gradient: const LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [AppColors.petrolBase, AppColors.petrolDark],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.petrolDark.withAlpha(76),
+                                blurRadius: 14,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (widget.isDrivingToDestination) {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        DriverVehicleDeliveryVerification(
+                                      solicitud: widget.solicitud,
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => DriverArrivedScreen(
+                                      solicitud: widget.solicitud,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: AppColors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: Text(
+                              widget.isDrivingToDestination
+                                  ? 'Llegada a Destino / Entregar Vehículo'
+                                  : 'Confirmar Llegada (Punto de Recogida)',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -363,56 +945,4 @@ class DriverNavigationScreen extends StatelessWidget {
   }
 }
 
-class RouteMapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF3A3A4A).withOpacity(0.6)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
 
-    for (double i = 0; i < size.height; i += 60) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
-    }
-    for (double i = 0; i < size.width; i += 60) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
-    }
-
-    final routePaint = Paint()
-      ..color = const Color(0xFFFF8A00)
-      ..strokeWidth = 10
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path();
-    path.moveTo(size.width * 0.1, size.height * 0.65);
-    path.quadraticBezierTo(
-      size.width * 0.35,
-      size.height * 0.45,
-      size.width * 0.55,
-      size.height * 0.35,
-    );
-    path.quadraticBezierTo(
-      size.width * 0.75,
-      size.height * 0.25,
-      size.width * 0.95,
-      size.height * 0.2,
-    );
-
-    canvas.drawPath(path, routePaint);
-
-    // Líneas naranja grandes
-    final bigOrangePaint = Paint()
-      ..color = const Color(0xFFFF8A00).withOpacity(0.25)
-      ..strokeWidth = 30
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawLine(Offset(0, size.height * 0.35), Offset(size.width, size.height * 0.35), bigOrangePaint);
-    canvas.drawLine(Offset(0, size.height * 0.65), Offset(size.width, size.height * 0.65), bigOrangePaint);
-    canvas.drawLine(Offset(size.width * 0.3, 0), Offset(size.width * 0.3, size.height), bigOrangePaint);
-    canvas.drawLine(Offset(size.width * 0.7, 0), Offset(size.width * 0.7, size.height), bigOrangePaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

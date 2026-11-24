@@ -1,15 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-
-import '/models/vehicle.dart';
-import '/widgets/custom_text_field.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/vehiculo_service.dart';
+import '../../../services/cloudinary_service.dart';
 
 // ─────────────────────────────────────────────
 // Paleta de la app
-// Azul petróleo, escalas de azul oscuro, 
-// grises y un acento en naranja.
 // ─────────────────────────────────────────────
-
 class AppColors {
   static const Color background = Color(0xFFF2F5F6);
   static const Color petrolDark = Color(0xFF0B3B4A);
@@ -21,10 +20,13 @@ class AppColors {
   static const Color accentOrange = Color(0xFFE8821E);
   static const Color accentOrangeBg = Color(0xFFFCEADA);
   static const Color white = Colors.white;
+  static const Color danger = Color(0xFFDC2626);
+  static const Color success = Color(0xFF16A34A);
 }
 
 class AddVehicleScreen extends StatefulWidget {
-  const AddVehicleScreen({super.key});
+  final dynamic vehicleToEdit;
+  const AddVehicleScreen({super.key, this.vehicleToEdit});
 
   @override
   State<AddVehicleScreen> createState() => _AddVehicleScreenState();
@@ -32,294 +34,331 @@ class AddVehicleScreen extends StatefulWidget {
 
 class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _imagePicker = ImagePicker();
 
   // ─────────────────────────────────────────────
-  // DATOS BÁSICOS
+  // CONTROLADORES: DATOS BÁSICOS
   // ─────────────────────────────────────────────
-
   final _brandController = TextEditingController();
   final _modelController = TextEditingController();
   final _platesController = TextEditingController();
   final _colorController = TextEditingController();
   final _yearController = TextEditingController();
 
-  // ─────────────────────────────────────────────
-  // INFORMACIÓN TÉCNICA
-  // ─────────────────────────────────────────────
-
-  final _vinController = TextEditingController();
-  final _insuranceCompanyController =
-      TextEditingController();
-  final _technicalReviewDateController =
-      TextEditingController();
-
   String? _vehicleType;
-  String? _fuelType;
-  String? _doors;
-  String? _insuranceStatus;
 
   // ─────────────────────────────────────────────
-  // SEGURIDAD
+  // CONTROLADORES: VIGENCIA DE DOCUMENTACIÓN
   // ─────────────────────────────────────────────
+  final _soatDateController = TextEditingController();
+  final _tecnoDateController = TextEditingController();
 
-  bool _hasGps = false;
-  bool _hasAirbags = false;
-  bool _hasAbs = false;
-  bool _hasRearCamera = false;
-  bool _hasInteriorCamera = false;
+  DateTime? _fechaVencimientoSoat;
+  DateTime? _fechaVencimientoTecnomecanica;
 
-  // ─────────────────────────────────────────────
-  // DOCUMENTOS
-  // ─────────────────────────────────────────────
-
-  final Map<String, bool> _documents = {
-    'Tarjeta de Circulación': false,
-    'Seguro': false,
-    'Verificación': false,
-  };
-
-  // Archivos
-  PlatformFile? _technicalReviewFile;
-  PlatformFile? _soatFile;
+  bool _isLoading = false;
+  String? _uploadStatus;
 
   // ─────────────────────────────────────────────
-  // DISPOSE
+  // VERIFICACIÓN DE PLACA
   // ─────────────────────────────────────────────
+  bool _plateVerifying = false;
+  String? _plateError;
+  bool _plateAvailable = false;
+  Timer? _plateDebounce;
+  String? _plateAlertMessage;
+
+  // ─────────────────────────────────────────────
+  // IMÁGENES: TARJETA DE PROPIEDAD + 3 FOTOS
+  // ─────────────────────────────────────────────
+  XFile? _tarjetaPropiedadFile;
+  String? _tarjetaPropiedadUrl;
+
+  final List<XFile?> _photoFiles = [null, null, null];
+  final List<String?> _photoUrls = [null, null, null];
+
+  @override
+  void initState() {
+    super.initState();
+    _platesController.addListener(_onPlateChanged);
+
+    if (widget.vehicleToEdit != null) {
+      _loadEditData();
+    }
+  }
+
+  void _loadEditData() {
+    final v = widget.vehicleToEdit;
+    _brandController.text = v['marca'] ?? '';
+    _modelController.text = v['modelo'] ?? '';
+    _platesController.text = v['placa'] ?? '';
+    _colorController.text = v['color'] ?? '';
+    _yearController.text = v['anio']?.toString() ?? '';
+
+    const validTypes = [
+      'Automóvil', 'Sedán', 'SUV', 'Camioneta',
+      'Hatchback', 'Pickup', 'Van', 'Otro'
+    ];
+    final rawType = v['tipoVehiculo']?.toString();
+    if (rawType != null) {
+      try {
+        _vehicleType = validTypes.firstWhere(
+          (t) => t.toLowerCase() == rawType.toLowerCase(),
+        );
+      } catch (_) {
+        _vehicleType = 'Automóvil';
+      }
+    } else {
+      _vehicleType = 'Automóvil';
+    }
+
+    // Cargar fecha SOAT
+    if (v['fechaVencimientoSoat'] != null) {
+      try {
+        final dt = DateTime.parse(v['fechaVencimientoSoat']).toLocal();
+        _fechaVencimientoSoat = dt;
+        _soatDateController.text =
+            '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      } catch (_) {}
+    }
+
+    // Cargar fecha Tecnomecánica
+    final rawTecno = v['fechaVencimientoTecnomecanica'] ?? v['fechaRevisionTecnicoMecanica'];
+    if (rawTecno != null) {
+      try {
+        final dt = DateTime.parse(rawTecno).toLocal();
+        _fechaVencimientoTecnomecanica = dt;
+        _tecnoDateController.text =
+            '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      } catch (_) {}
+    }
+
+    // Cargar URLs de imágenes existentes
+    if (v['tarjetaPropiedad'] != null && v['tarjetaPropiedad'].toString().isNotEmpty) {
+      _tarjetaPropiedadUrl = v['tarjetaPropiedad'].toString();
+    }
+
+    final fotos = v['fotos'];
+    if (fotos is List) {
+      for (int i = 0; i < fotos.length && i < 3; i++) {
+        if (fotos[i] != null && fotos[i].toString().isNotEmpty) {
+          _photoUrls[i] = fotos[i].toString();
+        }
+      }
+    }
+
+    // En modo edición, la placa ya existe así que no necesitamos verificar
+    if (_platesController.text.isNotEmpty) {
+      _plateAvailable = true;
+    }
+  }
 
   @override
   void dispose() {
+    _platesController.removeListener(_onPlateChanged);
     _brandController.dispose();
     _modelController.dispose();
     _platesController.dispose();
     _colorController.dispose();
     _yearController.dispose();
-
-    _vinController.dispose();
-    _insuranceCompanyController.dispose();
-    _technicalReviewDateController.dispose();
-
+    _soatDateController.dispose();
+    _tecnoDateController.dispose();
+    _plateDebounce?.cancel();
     super.dispose();
   }
 
   // ─────────────────────────────────────────────
-  // SELECCIONAR ARCHIVO
+  // VERIFICACIÓN DE PLACA EN TIEMPO REAL
   // ─────────────────────────────────────────────
+  void _onPlateChanged() {
+    final placa = _platesController.text.trim().toUpperCase();
+    final isEditing = widget.vehicleToEdit != null;
 
-  Future<void> _pickTechnicalReviewFile() async {
-    final result = await FilePicker.platform.pickFiles (
-      type: FileType.custom,
-      allowedExtensions: [
-        'pdf',
-        'jpg',
-        'jpeg',
-        'png',
-      ],
-      allowMultiple: false,
-    );
-
-    if (result != null && result.files.isNotEmpty) {
-      setState(() {
-        _technicalReviewFile = result.files.first;
-      });
-    }
-  }
-
-  Future<void> _pickSoatFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: [
-        'pdf',
-        'jpg',
-        'jpeg',
-        'png',
-      ],
-      allowMultiple: false,
-    );
-
-    if (result != null && result.files.isNotEmpty) {
-      setState(() {
-        _soatFile = result.files.first;
-      });
-    }
-  }
-
-  void _removeTechnicalReviewFile() {
-    setState(() {
-      _technicalReviewFile = null;
-    });
-  }
-
-  void _removeSoatFile() {
-    setState(() {
-      _soatFile = null;
-    });
-  }
-
-  // ─────────────────────────────────────────────
-  // GUARDAR VEHÍCULO
-  // ─────────────────────────────────────────────
-
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      final newVehicle = Vehicle(
-        id: DateTime.now()
-            .millisecondsSinceEpoch
-            .toString(),
-
-        brand: _brandController.text.trim(),
-
-        plates: _platesController.text
-            .trim()
-            .toUpperCase(),
-
-        color: _colorController.text.trim(),
-
-        year: _yearController.text.trim(),
-
-        icon: Icons.directions_car_outlined,
-
-        iconColor: AppColors.slateGray,
-      );
-
-      Navigator.of(context).pop(newVehicle);
-    }
-  }
-
-  // ─────────────────────────────────────────────
-  // TARJETAS DE DOCUMENTOS
-  // ─────────────────────────────────────────────
-
-  Widget _buildDocumentCard(String title) {
-    final bool isSelected = _documents[title]!;
-
-    return GestureDetector(
-      onTap: () {
+    // Si estamos editando y la placa no cambió, no verificar
+    if (isEditing) {
+      final originalPlaca = (widget.vehicleToEdit['placa'] ?? '').toString().trim().toUpperCase();
+      if (placa == originalPlaca) {
         setState(() {
-          _documents[title] = !isSelected;
+          _plateError = null;
+          _plateAvailable = true;
+          _plateVerifying = false;
+          _plateAlertMessage = null;
         });
-      },
+        return;
+      }
+    }
 
-      child: AnimatedContainer(
-        duration:
-            const Duration(milliseconds: 200),
+    if (placa.length < 6) {
+      setState(() {
+        _plateError = null;
+        _plateAvailable = false;
+        _plateVerifying = false;
+        _plateAlertMessage = null;
+      });
+      return;
+    }
 
-        width: 110,
+    final plateRegex = RegExp(r'^[A-Z]{3}[0-9]{3}$');
+    if (!plateRegex.hasMatch(placa)) {
+      setState(() {
+        _plateError = 'Debe tener 3 letras y 3 números (ej. ABC123)';
+        _plateAvailable = false;
+        _plateVerifying = false;
+        _plateAlertMessage = _plateError;
+      });
+      return;
+    }
 
-        padding: const EdgeInsets.symmetric(
-          vertical: 16,
-          horizontal: 8,
+    setState(() {
+      _plateVerifying = true;
+      _plateError = null;
+      _plateAvailable = false;
+      _plateAlertMessage = null;
+    });
+
+    _plateDebounce?.cancel();
+    _plateDebounce = Timer(const Duration(milliseconds: 500), () async {
+      try {
+        final result = await VehiculoService.verificarPlaca(placa);
+        if (!mounted) return;
+        final existe = result['existe'] == true;
+        final permitido = result['permitido'] == true;
+
+        if (existe && !permitido) {
+          setState(() {
+            _plateError = result['mensaje'] ?? 'Esta placa ya está registrada.';
+            _plateAvailable = false;
+            _plateAlertMessage = _plateError;
+          });
+        } else if (existe && permitido) {
+          // Vehículo vendido, se puede reusar
+          setState(() {
+            _plateError = null;
+            _plateAvailable = true;
+            _plateAlertMessage = result['mensaje'];
+          });
+        } else {
+          setState(() {
+            _plateError = null;
+            _plateAvailable = true;
+            _plateAlertMessage = null;
+          });
+        }
+      } catch (e) {
+        if (!mounted) return;
+        debugPrint('Error verificando placa: $e');
+      } finally {
+        if (mounted) {
+          setState(() => _plateVerifying = false);
+        }
+      }
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // SELECTOR DE IMÁGENES (CÁMARA / GALERÍA)
+  // ─────────────────────────────────────────────
+  Future<void> _pickImage({
+    required String title,
+    required Function(XFile) onPicked,
+  }) async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.accentOrangeBg
-              : AppColors.white,
-
-          borderRadius:
-              BorderRadius.circular(16),
-
-          border: Border.all(
-            color: isSelected
-                ? AppColors.accentOrange
-                : AppColors.borderGray,
-
-            width: isSelected ? 2 : 1,
-          ),
-
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppColors
-                        .accentOrange
-                        .withOpacity(0.18),
-
-                    blurRadius: 10,
-
-                    offset:
-                        const Offset(0, 4),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: AppColors
-                        .petrolDark
-                        .withOpacity(0.04),
-
-                    blurRadius: 8,
-
-                    offset:
-                        const Offset(0, 2),
-                  ),
-                ],
-        ),
-
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 50,
-              height: 50,
-
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
-                gradient: isSelected
-                    ? const LinearGradient(
-                        begin:
-                            Alignment.topLeft,
-                        end:
-                            Alignment.bottomRight,
-
-                        colors: [
-                          AppColors
-                              .accentOrange,
-                          Color(0xFFD46A0A),
-                        ],
-                      )
-                    : null,
-
-                color: isSelected
-                    ? null
-                    : AppColors.background,
-
-                shape: BoxShape.circle,
-
-                border: isSelected
-                    ? null
-                    : Border.all(
-                        color:
-                            AppColors.borderGray,
-                        width: 1,
-                      ),
-              ),
-
-              child: Icon(
-                isSelected
-                    ? Icons.check_circle
-                    : Icons
-                        .camera_alt_outlined,
-
-                color: isSelected
-                    ? AppColors.white
-                    : AppColors.slateGray,
-
-                size: 26,
+                color: AppColors.borderGray,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-
-            const SizedBox(height: 12),
-
+            const SizedBox(height: 16),
             Text(
               title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: _imageSourceButton(
+                    icon: Icons.camera_alt_rounded,
+                    label: 'Cámara',
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      final file = await _imagePicker.pickImage(
+                        source: ImageSource.camera,
+                        imageQuality: 80,
+                        maxWidth: 1200,
+                      );
+                      if (file != null) onPicked(file);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _imageSourceButton(
+                    icon: Icons.photo_library_rounded,
+                    label: 'Galería',
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      final file = await _imagePicker.pickImage(
+                        source: ImageSource.gallery,
+                        imageQuality: 80,
+                        maxWidth: 1200,
+                      );
+                      if (file != null) onPicked(file);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
 
-              textAlign: TextAlign.center,
-
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight:
-                    FontWeight.w600,
-
-                color: isSelected
-                    ? AppColors
-                        .accentOrange
-                    : AppColors.slateGray,
+  Widget _imageSourceButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderGray),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: AppColors.petrolBase),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
             ),
           ],
@@ -329,505 +368,30 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   }
 
   // ─────────────────────────────────────────────
-  // TÍTULO DE SECCIÓN
+  // SELECTOR DE FECHAS
   // ─────────────────────────────────────────────
-
-  Widget _buildSectionTitle(String title) {
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 16,
-
-          decoration: BoxDecoration(
-            color:
-                AppColors.accentOrange,
-
-            borderRadius:
-                BorderRadius.circular(2),
-          ),
-        ),
-
-        const SizedBox(width: 8),
-
-        Text(
-          title,
-
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight:
-                FontWeight.bold,
-
-            color:
-                AppColors.petrolDark,
-
-            letterSpacing: 1.1,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // DROPDOWN
-  // ─────────────────────────────────────────────
-
-  Widget _buildDropdown({
-    required String label,
-    required String hint,
-    required IconData icon,
-    required String? value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return DropdownButtonFormField<String>(
-      value: value,
-
-      icon: const Icon(
-        Icons.keyboard_arrow_down_rounded,
-        color: AppColors.slateGray,
-      ),
-
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-
-        prefixIcon: Icon(
-          icon,
-          color: AppColors.slateGray,
-        ),
-
-        filled: true,
-
-        fillColor:
-            AppColors.white,
-
-        contentPadding:
-            const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
-
-        border: OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(12),
-
-          borderSide:
-              const BorderSide(
-            color:
-                AppColors.borderGray,
-          ),
-        ),
-
-        enabledBorder:
-            OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(12),
-
-          borderSide:
-              const BorderSide(
-            color:
-                AppColors.borderGray,
-          ),
-        ),
-
-        focusedBorder:
-            OutlineInputBorder(
-          borderRadius:
-              BorderRadius.circular(12),
-
-          borderSide:
-              const BorderSide(
-            color:
-                AppColors.petrolBase,
-            width: 1.5,
-          ),
-        ),
-      ),
-
-      items: items.map((item) {
-        return DropdownMenuItem<String>(
-          value: item,
-          child: Text(item),
-        );
-      }).toList(),
-
-      onChanged: onChanged,
-
-      validator: (value) {
-        if (value == null ||
-            value.isEmpty) {
-          return 'Selecciona una opción';
-        }
-
-        return null;
-      },
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // INTERRUPTOR DE SEGURIDAD
-  // ─────────────────────────────────────────────
-
-  Widget _buildSecurityOption({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Container(
-      margin:
-          const EdgeInsets.only(bottom: 10),
-
-      padding:
-          const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 10,
-      ),
-
-      decoration: BoxDecoration(
-        color: AppColors.white,
-
-        borderRadius:
-            BorderRadius.circular(14),
-
-        border: Border.all(
-          color: value
-              ? AppColors.accentOrange
-              : AppColors.borderGray,
-
-          width: value ? 1.5 : 1,
-        ),
-      ),
-
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-
-            decoration: BoxDecoration(
-              color: value
-                  ? AppColors
-                      .accentOrangeBg
-                  : AppColors.background,
-
-              shape:
-                  BoxShape.circle,
-            ),
-
-            child: Icon(
-              icon,
-
-              color: value
-                  ? AppColors
-                      .accentOrange
-                  : AppColors.slateGray,
-
-              size: 22,
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-
-              children: [
-                Text(
-                  title,
-
-                  style:
-                      const TextStyle(
-                    fontSize: 14,
-                    fontWeight:
-                        FontWeight.w600,
-                    color:
-                        AppColors
-                            .textPrimary,
-                  ),
-                ),
-
-                const SizedBox(height: 2),
-
-                Text(
-                  subtitle,
-
-                  style:
-                      const TextStyle(
-                    fontSize: 11,
-                    color:
-                        AppColors
-                            .slateGray,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Switch(
-            value: value,
-
-            activeColor:
-                AppColors
-                    .accentOrange,
-
-            activeTrackColor:
-                AppColors
-                    .accentOrangeBg,
-
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // TARJETA PARA ARCHIVOS
-  // ─────────────────────────────────────────────
-
-  Widget _buildFileUploadCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required PlatformFile? file,
-    required VoidCallback onPick,
-    required VoidCallback onRemove,
-  }) {
-    final bool hasFile = file != null;
-
-    return Container(
-      width: double.infinity,
-
-      padding:
-          const EdgeInsets.all(16),
-
-      decoration: BoxDecoration(
-        color: hasFile
-            ? AppColors.accentOrangeBg
-            : AppColors.white,
-
-        borderRadius:
-            BorderRadius.circular(16),
-
-        border: Border.all(
-          color: hasFile
-              ? AppColors.accentOrange
-              : AppColors.borderGray,
-
-          width: hasFile ? 1.5 : 1,
-        ),
-
-        boxShadow: [
-          BoxShadow(
-            color: AppColors
-                .petrolDark
-                .withOpacity(0.04),
-
-            blurRadius: 8,
-
-            offset:
-                const Offset(0, 2),
-          ),
-        ],
-      ),
-
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-
-            decoration: BoxDecoration(
-              color: hasFile
-                  ? AppColors
-                      .accentOrange
-                  : AppColors.background,
-
-              shape:
-                  BoxShape.circle,
-            ),
-
-            child: Icon(
-              hasFile
-                  ? Icons
-                      .check_circle_outline
-                  : icon,
-
-              color: hasFile
-                  ? AppColors.white
-                  : AppColors.slateGray,
-
-              size: 24,
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-
-              children: [
-                Text(
-                  title,
-
-                  style:
-                      const TextStyle(
-                    fontSize: 14,
-                    fontWeight:
-                        FontWeight.w600,
-                    color:
-                        AppColors
-                            .textPrimary,
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
-                if (hasFile)
-                  Text(
-                    file.name,
-
-                    maxLines: 1,
-
-                    overflow:
-                        TextOverflow.ellipsis,
-
-                    style:
-                        const TextStyle(
-                      fontSize: 11,
-                      color:
-                          AppColors
-                              .accentOrange,
-
-                      fontWeight:
-                          FontWeight.w600,
-                    ),
-                  )
-                else
-                  Text(
-                    subtitle,
-
-                    style:
-                        const TextStyle(
-                      fontSize: 11,
-                      color:
-                          AppColors
-                              .slateGray,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          if (hasFile)
-            IconButton(
-              onPressed: onRemove,
-
-              icon: const Icon(
-                Icons.close_rounded,
-                color:
-                    AppColors.slateGray,
-              ),
-
-              tooltip:
-                  'Eliminar archivo',
-            )
-          else
-            OutlinedButton.icon(
-              onPressed: onPick,
-
-              icon: const Icon(
-                Icons.attach_file_rounded,
-                size: 18,
-              ),
-
-              label: const Text(
-                'Adjuntar',
-              ),
-
-              style:
-                  OutlinedButton.styleFrom(
-                foregroundColor:
-                    AppColors
-                        .petrolBase,
-
-                side:
-                    const BorderSide(
-                  color:
-                      AppColors
-                          .petrolBase,
-                ),
-
-                shape:
-                    RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(
-                          20),
-                ),
-
-                padding:
-                    const EdgeInsets
-                        .symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // FECHA DE REVISIÓN
-  // ─────────────────────────────────────────────
-
-  Future<void>
-      _selectTechnicalReviewDate() async {
-    final DateTime? picked =
-        await showDatePicker(
+  Future<void> _selectSoatDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final initial = _fechaVencimientoSoat != null && !_fechaVencimientoSoat!.isBefore(today)
+        ? _fechaVencimientoSoat!
+        : today;
+
+    final DateTime? picked = await showDatePicker(
       context: context,
-
-      initialDate:
-          DateTime.now(),
-
-      firstDate:
-          DateTime(2000),
-
-      lastDate:
-          DateTime(2100),
-
-      builder:
-          (context, child) {
+      initialDate: initial,
+      firstDate: today,
+      lastDate: DateTime(now.year + 15),
+      builder: (context, child) {
         return Theme(
-          data: Theme.of(context)
-              .copyWith(
-            colorScheme:
-                const ColorScheme.light(
-              primary:
-                  AppColors.petrolBase,
-
-              onPrimary:
-                  AppColors.white,
-
-              surface:
-                  AppColors.white,
-
-              onSurface:
-                  AppColors
-                      .textPrimary,
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.petrolBase,
+              onPrimary: AppColors.white,
+              surface: AppColors.white,
+              onSurface: AppColors.textPrimary,
             ),
           ),
-
           child: child!,
         );
       },
@@ -835,839 +399,1124 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
     if (picked != null) {
       setState(() {
-        _technicalReviewDateController
-                .text =
-            '${picked.day.toString().padLeft(2, '0')}/'
-            '${picked.month.toString().padLeft(2, '0')}/'
-            '${picked.year}';
+        _fechaVencimientoSoat = picked;
+        _soatDateController.text =
+            '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+      });
+    }
+  }
+
+  Future<void> _selectTecnoDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final initial = _fechaVencimientoTecnomecanica != null && !_fechaVencimientoTecnomecanica!.isBefore(today)
+        ? _fechaVencimientoTecnomecanica!
+        : today;
+
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: today,
+      lastDate: DateTime(now.year + 15),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.petrolBase,
+              onPrimary: AppColors.white,
+              surface: AppColors.white,
+              onSurface: AppColors.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _fechaVencimientoTecnomecanica = picked;
+        _tecnoDateController.text =
+            '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
       });
     }
   }
 
   // ─────────────────────────────────────────────
-  // BUILD
+  // GUARDAR / ACTUALIZAR VEHÍCULO
   // ─────────────────────────────────────────────
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // Verificar que la placa esté disponible
+    if (_plateError != null && _plateError!.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.danger,
+          content: Text(_plateError!),
+        ),
+      );
+      return;
+    }
+
+    if (_plateVerifying) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.accentOrange,
+          content: Text('Espera mientras se verifica la placa...'),
+        ),
+      );
+      return;
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final isEditing = widget.vehicleToEdit != null;
+
+    if (!isEditing && _fechaVencimientoSoat != null && _fechaVencimientoSoat!.isBefore(today)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.danger,
+          content: Text('No se permite registrar con el SOAT vencido.'),
+        ),
+      );
+      return;
+    }
+
+    if (!isEditing && _fechaVencimientoTecnomecanica != null && _fechaVencimientoTecnomecanica!.isBefore(today)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.danger,
+          content: Text('No se permite registrar con la tecnomecánica vencida.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _uploadStatus = 'Preparando...';
+    });
+
+    try {
+      final usuarioId = await AuthService.obtenerUsuarioId();
+      if (usuarioId == null) throw Exception('No hay usuario activo en sesión.');
+
+      // Extracción segura del clienteId
+      String? clienteId;
+      if (isEditing) {
+        final c = widget.vehicleToEdit['cliente'];
+        if (c is Map) {
+          clienteId = (c['_id'] ?? c['id'])?.toString();
+        } else if (c != null) {
+          clienteId = c.toString();
+        }
+      }
+      clienteId ??= usuarioId;
+
+      // ── SUBIR IMÁGENES A CLOUDINARY ──
+      String? tarjetaPropiedadFinalUrl = _tarjetaPropiedadUrl;
+      List<String> fotosFinalUrls = List.from(_photoUrls.map((u) => u ?? ''));
+
+      // Tarjeta de propiedad
+      if (_tarjetaPropiedadFile != null) {
+        setState(() => _uploadStatus = 'Subiendo tarjeta de propiedad...');
+        tarjetaPropiedadFinalUrl = await CloudinaryService.subirImagen(
+          _tarjetaPropiedadFile!,
+          folder: 'vehiculos/tarjetas',
+        );
+      }
+
+      // Fotos del vehículo
+      for (int i = 0; i < 3; i++) {
+        if (_photoFiles[i] != null) {
+          setState(() => _uploadStatus = 'Subiendo foto ${i + 1} de 3...');
+          fotosFinalUrls[i] = await CloudinaryService.subirImagen(
+            _photoFiles[i]!,
+            folder: 'vehiculos/fotos',
+          );
+        }
+      }
+
+      setState(() => _uploadStatus = 'Guardando vehículo...');
+
+      final vehiculoData = <String, dynamic>{
+        'cliente': clienteId,
+        'marca': _brandController.text.trim(),
+        'modelo': _modelController.text.trim().isEmpty
+            ? _brandController.text.trim()
+            : _modelController.text.trim(),
+        'placa': _platesController.text.trim().toUpperCase(),
+        'color': _colorController.text.trim(),
+        'anio': int.tryParse(_yearController.text.trim()) ?? DateTime.now().year,
+        'tipoVehiculo': _vehicleType ?? 'Automóvil',
+        if (_fechaVencimientoSoat != null)
+          'fechaVencimientoSoat': _fechaVencimientoSoat!.toIso8601String(),
+        if (_fechaVencimientoTecnomecanica != null) ...{
+          'fechaVencimientoTecnomecanica': _fechaVencimientoTecnomecanica!.toIso8601String(),
+          'fechaRevisionTecnicoMecanica': _fechaVencimientoTecnomecanica!.toIso8601String(),
+        },
+        'numeroPuertas': widget.vehicleToEdit?['numeroPuertas'] ?? 4,
+        'tipoCombustible': widget.vehicleToEdit?['tipoCombustible'] ?? 'Gasolina',
+        'estadoSeguro': widget.vehicleToEdit?['estadoSeguro'] ?? 'Activo',
+        'companiaAseguradora': widget.vehicleToEdit?['companiaAseguradora'] ?? 'N/A',
+        'estado': true,
+      };
+
+      // Agregar imágenes al payload exactamente igual que la versión web
+      if (tarjetaPropiedadFinalUrl != null && tarjetaPropiedadFinalUrl.isNotEmpty) {
+        vehiculoData['tarjetaPropiedad'] = tarjetaPropiedadFinalUrl;
+      }
+
+      final fotosNoVacias = fotosFinalUrls.where((u) => u.isNotEmpty).toList();
+      if (fotosNoVacias.isNotEmpty) {
+        vehiculoData['fotos'] = fotosNoVacias;
+        vehiculoData['foto'] = fotosNoVacias.first;
+      }
+      if (fotosFinalUrls.isNotEmpty && fotosFinalUrls[0].isNotEmpty) {
+        vehiculoData['foto1'] = fotosFinalUrls[0];
+      }
+      if (fotosFinalUrls.length > 1 && fotosFinalUrls[1].isNotEmpty) {
+        vehiculoData['foto2'] = fotosFinalUrls[1];
+      }
+      if (fotosFinalUrls.length > 2 && fotosFinalUrls[2].isNotEmpty) {
+        vehiculoData['foto3'] = fotosFinalUrls[2];
+      }
+
+      // Si existe un número de chasis real en el vehículo a editar, preservarlo; de lo contrario generar VIN como en la web
+      final chasisExistente = widget.vehicleToEdit?['numeroChasis']?.toString();
+      if (chasisExistente != null && chasisExistente.isNotEmpty && chasisExistente != '00000') {
+        vehiculoData['numeroChasis'] = chasisExistente;
+      } else {
+        vehiculoData['numeroChasis'] = 'VIN-${DateTime.now().millisecondsSinceEpoch}';
+      }
+
+      if (isEditing) {
+        final id = (widget.vehicleToEdit['_id'] ?? widget.vehicleToEdit['id'])?.toString();
+        if (id == null || id.isEmpty) {
+          throw Exception('No se encontró el identificador del vehículo a editar.');
+        }
+        await VehiculoService.update(id, vehiculoData);
+      } else {
+        await VehiculoService.crear(vehiculoData);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.success,
+            content: Text(isEditing
+                ? 'Vehículo actualizado exitosamente.'
+                : 'Vehículo registrado exitosamente.'),
+          ),
+        );
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.danger,
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _uploadStatus = null;
+        });
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // COMPONENTES DE UI
+  // ─────────────────────────────────────────────
+  Widget _buildSectionHeader(String title, String subtitle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 3.5,
+              height: 18,
+              decoration: BoxDecoration(
+                color: AppColors.accentOrange,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.petrolDark,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.slateGray,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCardContainer({required List<Widget> children}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.borderGray, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.petrolDark.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required String labelText,
+    String? hintText,
+    required IconData prefixIcon,
+    bool isRequired = true,
+    Widget? suffixIcon,
+  }) {
+    final label = isRequired
+        ? RichText(
+            text: TextSpan(
+              text: labelText,
+              style: const TextStyle(fontSize: 14, color: AppColors.slateGray),
+              children: const [
+                TextSpan(
+                  text: ' *',
+                  style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          )
+        : null;
+
+    return InputDecoration(
+      labelText: isRequired ? null : labelText,
+      label: label,
+      hintText: hintText,
+      prefixIcon: Icon(prefixIcon, color: AppColors.slateGray, size: 20),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.borderGray),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.borderGray),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.petrolBase, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.danger),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // WIDGET DE IMAGEN (TARJETA / FOTOS)
+  // ─────────────────────────────────────────────
+  Widget _buildImagePicker({
+    required String label,
+    XFile? file,
+    String? url,
+    required VoidCallback onTap,
+    VoidCallback? onRemove,
+    bool isRequired = false,
+  }) {
+    final hasImage = file != null || (url != null && url.isNotEmpty);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 140,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: hasImage ? AppColors.success.withOpacity(0.5) : AppColors.borderGray,
+            width: hasImage ? 2 : 1,
+          ),
+        ),
+        child: hasImage
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: file != null
+                        ? FutureBuilder<List<int>>(
+                            future: file.readAsBytes(),
+                            builder: (ctx, snap) {
+                              if (snap.hasData) {
+                                return Image.memory(
+                                  snap.data! as dynamic,
+                                  fit: BoxFit.cover,
+                                );
+                              }
+                              return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                            },
+                          )
+                        : Image.network(
+                            url!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Center(
+                              child: Icon(Icons.broken_image, color: AppColors.slateGray, size: 36),
+                            ),
+                          ),
+                  ),
+                  if (onRemove != null)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: GestureDetector(
+                        onTap: onRemove,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: AppColors.danger,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.close, color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.6),
+                            Colors.transparent,
+                          ],
+                        ),
+                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle, color: AppColors.success, size: 16),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              label,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.add_a_photo_rounded,
+                    size: 30,
+                    color: AppColors.slateGray.withOpacity(0.5),
+                  ),
+                  const SizedBox(height: 8),
+                  RichText(
+                    textAlign: TextAlign.center,
+                    text: TextSpan(
+                      text: label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.slateGray.withOpacity(0.7),
+                      ),
+                      children: isRequired
+                          ? const [
+                              TextSpan(
+                                text: ' *',
+                                style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold),
+                              ),
+                            ]
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Toca para subir',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.slateGray.withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // PLATE STATUS INDICATOR
+  // ─────────────────────────────────────────────
+  Widget? _buildPlateStatus() {
+    if (_plateVerifying) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 6),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentOrange),
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Verificando placa...',
+              style: TextStyle(fontSize: 12, color: AppColors.accentOrange, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_plateError != null && _plateError!.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.error_outline, size: 14, color: AppColors.danger),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                _plateError!,
+                style: const TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_plateAvailable && _platesController.text.trim().length >= 6) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 6),
+        child: Row(
+          children: [
+            Icon(Icons.check_circle, size: 14, color: AppColors.success),
+            SizedBox(width: 6),
+            Text(
+              'Placa disponible ✓',
+              style: TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bool isEditing = widget.vehicleToEdit != null;
+
     return Scaffold(
-      backgroundColor:
-          AppColors.background,
-
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor:
-            AppColors.white,
-
+        backgroundColor: AppColors.white,
         elevation: 0,
-
-        title: const Text(
-          'Agregar Vehículo',
-
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight:
-                FontWeight.bold,
-
-            color:
-                AppColors.textPrimary,
+        title: Text(
+          isEditing ? 'Editar Vehículo' : 'Registrar Vehículo',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
           ),
         ),
-
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color:
-                AppColors.textPrimary,
-          ),
-
-          onPressed: () =>
-              Navigator.of(context)
-                  .pop(),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-
       body: SafeArea(
-        child:
+        child: Stack(
+          children: [
             SingleChildScrollView(
-          padding:
-              const EdgeInsets
-                  .symmetric(
-            horizontal: 16,
-            vertical: 20,
-          ),
-
-          child: Form(
-            key: _formKey,
-
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment
-                      .start,
-
-              children: [
-
-                // ═══════════════════════════════════
-                // DATOS BÁSICOS
-                // ═══════════════════════════════════
-
-                Container(
-                  width:
-                      double.infinity,
-
-                  padding:
-                      const EdgeInsets
-                          .all(20),
-
-                  decoration:
-                      BoxDecoration(
-                    color:
-                        AppColors.white,
-
-                    borderRadius:
-                        BorderRadius
-                            .circular(20),
-
-                    border:
-                        Border.all(
-                      color:
-                          AppColors
-                              .borderGray,
-                      width: 1,
-                    ),
-
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors
-                            .petrolDark
-                            .withOpacity(
-                                0.06),
-
-                        blurRadius: 12,
-
-                        offset:
-                            const Offset(
-                                0, 4),
-                      ),
-                    ],
-                  ),
-
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment
-                            .start,
-
-                    children: [
-
-                      const Text(
-                        'Datos básicos del vehículo',
-
-                        style:
-                            TextStyle(
-                          fontSize: 16,
-                          fontWeight:
-                              FontWeight
-                                  .w600,
-
-                          color:
-                              AppColors
-                                  .textPrimary,
-                        ),
-                      ),
-
-                      const SizedBox(
-                          height: 6),
-
-                      const Text(
-                        'Ingresa la información principal del vehículo',
-
-                        style:
-                            TextStyle(
-                          fontSize: 12,
-
-                          color:
-                              AppColors
-                                  .slateGray,
-                        ),
-                      ),
-
-                      const SizedBox(
-                          height: 20),
-
-                      // MARCA
-                      CustomTextField(
-                        labelText:
-                            'MARCA',
-
-                        hintText:
-                            'Ej: Toyota',
-
-                        prefixIcon:
-                            Icons
-                                .directions_car_outlined,
-
-                        controller:
-                            _brandController,
-                      ),
-
-                      const SizedBox(
-                          height: 16),
-
-                      // MODELO
-                      CustomTextField(
-                        labelText:
-                            'MODELO',
-
-                        hintText:
-                            'Ej: Corolla',
-
-                        prefixIcon:
-                            Icons
-                                .car_rental_outlined,
-
-                        controller:
-                            _modelController,
-                      ),
-
-                      const SizedBox(
-                          height: 16),
-
-                      // AÑO
-                      CustomTextField(
-                        labelText:
-                            'AÑO',
-
-                        hintText:
-                            'Ej: 2023',
-
-                        prefixIcon:
-                            Icons
-                                .calendar_today_outlined,
-
-                        keyboardType:
-                            TextInputType
-                                .number,
-
-                        controller:
-                            _yearController,
-                      ),
-
-                      const SizedBox(
-                          height: 16),
-
-                      // COLOR
-                      CustomTextField(
-                        labelText:
-                            'COLOR',
-
-                        hintText:
-                            'Ej: Rojo',
-
-                        prefixIcon:
-                            Icons
-                                .palette_outlined,
-
-                        controller:
-                            _colorController,
-                      ),
-
-                      const SizedBox(
-                          height: 16),
-
-                      // PLACA
-                      CustomTextField(
-                        labelText:
-                            'PLACA',
-
-                        hintText:
-                            'Ej: ABC 123',
-
-                        prefixIcon:
-                            Icons
-                                .confirmation_number_outlined,
-
-                        controller:
-                            _platesController,
-                      ),
-
-                      const SizedBox(
-                          height: 16),
-
-                      // TIPO
-                      _buildDropdown(
-                        label:
-                            'TIPO DE VEHÍCULO',
-
-                        hint:
-                            'Selecciona el tipo',
-
-                        icon:
-                            Icons
-                                .directions_car_outlined,
-
-                        value:
-                            _vehicleType,
-
-                        items: const [
-                          'Sedán',
-                          'SUV',
-                          'Camioneta',
-                          'Hatchback',
-                          'Pickup',
-                          'Van',
-                          'Moto',
-                          'Otro',
-                        ],
-
-                        onChanged:
-                            (value) {
-                          setState(() {
-                            _vehicleType =
-                                value;
-                          });
-                        },
-                      ),
-
-                      const SizedBox(
-                          height: 16),
-
-                      // PUERTAS
-                      _buildDropdown(
-                        label:
-                            'NÚMERO DE PUERTAS',
-
-                        hint:
-                            'Selecciona',
-
-                        icon:
-                            Icons
-                                .sensor_door_outlined,
-
-                        value:
-                            _doors,
-
-                        items: const [
-                          '2 puertas',
-                          '3 puertas',
-                          '4 puertas',
-                          '5 puertas',
-                        ],
-
-                        onChanged:
-                            (value) {
-                          setState(() {
-                            _doors =
-                                value;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(
-                    height: 28),
-
-                // ═══════════════════════════════════
-                // INFORMACIÓN TÉCNICA
-                // ═══════════════════════════════════
-
-                _buildSectionTitle(
-                  'INFORMACIÓN TÉCNICA Y DE SEGURIDAD',
-                ),
-
-                const SizedBox(
-                    height: 16),
-
-                Container(
-                  width:
-                      double.infinity,
-
-                  padding:
-                      const EdgeInsets
-                          .all(20),
-
-                  decoration:
-                      BoxDecoration(
-                    color:
-                        AppColors.white,
-
-                    borderRadius:
-                        BorderRadius
-                            .circular(20),
-
-                    border:
-                        Border.all(
-                      color:
-                          AppColors
-                              .borderGray,
-                    ),
-
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors
-                            .petrolDark
-                            .withOpacity(
-                                0.06),
-
-                        blurRadius: 12,
-
-                        offset:
-                            const Offset(
-                                0, 4),
-                      ),
-                    ],
-                  ),
-
-                  child: Column(
-                    children: [
-
-                      // VIN
-                      CustomTextField(
-                        labelText:
-                            'NÚMERO DE CHASIS / VIN',
-
-                        hintText:
-                            'Ej: 1HGCM82633A123456',
-
-                        prefixIcon:
-                            Icons
-                                .fingerprint_outlined,
-
-                        controller:
-                            _vinController,
-                      ),
-
-                      const SizedBox(
-                          height: 16),
-
-                      // COMBUSTIBLE
-                      _buildDropdown(
-                        label:
-                            'TIPO DE COMBUSTIBLE',
-
-                        hint:
-                            'Selecciona el combustible',
-
-                        icon:
-                            Icons
-                                .local_gas_station_outlined,
-
-                        value:
-                            _fuelType,
-
-                        items: const [
-                          'Gasolina',
-                          'Diésel',
-                          'Eléctrico',
-                          'Híbrido',
-                        ],
-
-                        onChanged:
-                            (value) {
-                          setState(() {
-                            _fuelType =
-                                value;
-                          });
-                        },
-                      ),
-
-                      const SizedBox(
-                          height: 16),
-
-                      // ESTADO SEGURO
-                      _buildDropdown(
-                        label:
-                            'ESTADO DEL SEGURO',
-
-                        hint:
-                            'Selecciona el estado',
-
-                        icon:
-                            Icons
-                                .verified_user_outlined,
-
-                        value:
-                            _insuranceStatus,
-
-                        items: const [
-                          'Vigente',
-                          'Vencido',
-                        ],
-
-                        onChanged:
-                            (value) {
-                          setState(() {
-                            _insuranceStatus =
-                                value;
-                          });
-                        },
-                      ),
-
-                      const SizedBox(
-                          height: 16),
-
-                      // ASEGURADORA
-                      CustomTextField(
-                        labelText:
-                            'COMPAÑÍA ASEGURADORA',
-
-                        hintText:
-                            'Ej: SURA',
-
-                        prefixIcon:
-                            Icons
-                                .business_outlined,
-
-                        controller:
-                            _insuranceCompanyController,
-                      ),
-
-                      const SizedBox(
-                          height: 16),
-
-                      // FECHA
-                      GestureDetector(
-                        onTap:
-                            _selectTechnicalReviewDate,
-
-                        child:
-                            AbsorbPointer(
-                          child:
-                              CustomTextField(
-                            labelText:
-                                'FECHA DE REVISIÓN TÉCNICO-MECÁNICA',
-
-                            hintText:
-                                'Selecciona una fecha',
-
-                            prefixIcon:
-                                Icons
-                                    .event_available_outlined,
-
-                            controller:
-                                _technicalReviewDateController,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+
+                    // ═══════════════════════════════════════════
+                    // ALERTA DE PLACA DUPLICADA
+                    // ═══════════════════════════════════════════
+                    if (_plateAlertMessage != null && _plateAlertMessage!.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: _plateError != null ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: _plateError != null ? const Color(0xFFFECACA) : const Color(0xFFFDE68A),
                           ),
                         ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              _plateError != null ? Icons.warning_amber_rounded : Icons.info_outline_rounded,
+                              color: _plateError != null ? AppColors.danger : AppColors.accentOrange,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _plateAlertMessage!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: _plateError != null ? const Color(0xFF991B1B) : const Color(0xFF92400E),
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => setState(() => _plateAlertMessage = null),
+                              child: Icon(
+                                Icons.close,
+                                size: 18,
+                                color: _plateError != null ? const Color(0xFF991B1B) : const Color(0xFF92400E),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
 
-                      const SizedBox(
-                          height: 22),
-
-                      // GPS
-                      _buildSecurityOption(
-                        title:
-                            'GPS / Rastreo',
-
-                        subtitle:
-                            'El vehículo cuenta con sistema de rastreo',
-
-                        icon:
-                            Icons.gps_fixed,
-
-                        value:
-                            _hasGps,
-
-                        onChanged:
-                            (value) {
-                          setState(() {
-                            _hasGps =
-                                value;
-                          });
-                        },
-                      ),
-
-                      // AIRBAGS
-                      _buildSecurityOption(
-                        title:
-                            'Airbags',
-
-                        subtitle:
-                            'Cuenta con sistema de airbags',
-
-                        icon: Icons
-                            .airline_seat_recline_normal,
-
-                        value:
-                            _hasAirbags,
-
-                        onChanged:
-                            (value) {
-                          setState(() {
-                            _hasAirbags =
-                                value;
-                          });
-                        },
-                      ),
-
-                      // ABS
-                      _buildSecurityOption(
-                        title:
-                            'Frenos ABS',
-
-                        subtitle:
-                            'Cuenta con sistema de frenos ABS',
-
-                        icon:
-                            Icons.speed_outlined,
-
-                        value:
-                            _hasAbs,
-
-                        onChanged:
-                            (value) {
-                          setState(() {
-                            _hasAbs =
-                                value;
-                          });
-                        },
-                      ),
-
-                      // CÁMARA TRASERA
-                      _buildSecurityOption(
-                        title:
-                            'Cámara trasera',
-
-                        subtitle:
-                            'Cuenta con cámara de reversa',
-
-                        icon:
-                            Icons
-                                .camera_rear_outlined,
-
-                        value:
-                            _hasRearCamera,
-
-                        onChanged:
-                            (value) {
-                          setState(() {
-                            _hasRearCamera =
-                                value;
-                          });
-                        },
-                      ),
-
-                      // CÁMARA INTERIOR
-                      _buildSecurityOption(
-                        title:
-                            'Cámara interior',
-
-                        subtitle:
-                            'Cuenta con cámara dentro del vehículo',
-
-                        icon:
-                            Icons
-                                .videocam_outlined,
-
-                        value:
-                            _hasInteriorCamera,
-
-                        onChanged:
-                            (value) {
-                          setState(() {
-                            _hasInteriorCamera =
-                                value;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(
-                    height: 28),
-
-                // ═══════════════════════════════════
-                // DOCUMENTOS
-                // ═══════════════════════════════════
-
-                _buildSectionTitle(
-                  'DOCUMENTOS DEL VEHÍCULO',
-                ),
-
-                const SizedBox(
-                    height: 16),
-
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment
-                          .spaceBetween,
-
-                  children: [
-                    _buildDocumentCard(
-                      'Tarjeta de Circulación',
-                    ),
-
-                    _buildDocumentCard(
-                      'Seguro',
-                    ),
-
-                    _buildDocumentCard(
-                      'Verificación',
-                    ),
-                  ],
-                ),
-
-                const SizedBox(
-                    height: 16),
-
-                // TÉCNICO-MECÁNICA
-                _buildFileUploadCard(
-                  title:
-                      'Certificado técnico-mecánica',
-
-                  subtitle:
-                      'PDF, JPG o PNG',
-
-                  icon:
-                      Icons.description_outlined,
-
-                  file:
-                      _technicalReviewFile,
-
-                  onPick:
-                      _pickTechnicalReviewFile,
-
-                  onRemove:
-                      _removeTechnicalReviewFile,
-                ),
-
-                const SizedBox(
-                    height: 12),
-
-                // SOAT
-                _buildFileUploadCard(
-                  title:
-                      'Certificado SOAT',
-
-                  subtitle:
-                      'PDF, JPG o PNG',
-
-                  icon:
-                      Icons.verified_user_outlined,
-
-                  file:
-                      _soatFile,
-
-                  onPick:
-                      _pickSoatFile,
-
-                  onRemove:
-                      _removeSoatFile,
-                ),
-
-                const SizedBox(
-                    height: 32),
-
-                // ═══════════════════════════════════
-                // BOTÓN GUARDAR
-                // ═══════════════════════════════════
-
-                SizedBox(
-                  width:
-                      double.infinity,
-
-                  child:
-                      DecoratedBox(
-                    decoration:
-                        BoxDecoration(
-                      borderRadius:
-                          BorderRadius
-                              .circular(30),
-
-                      gradient:
-                          const LinearGradient(
-                        begin:
-                            Alignment.centerLeft,
-
-                        end:
-                            Alignment.centerRight,
-
-                        colors: [
-                          AppColors
-                              .petrolBase,
-                          AppColors
-                              .petrolDark,
+                    // Indicador de campos obligatorios
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 14),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Los campos marcados con ',
+                            style: TextStyle(fontSize: 12, color: AppColors.slateGray),
+                          ),
+                          Text(
+                            '*',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            ' son obligatorios.',
+                            style: TextStyle(fontSize: 12, color: AppColors.slateGray),
+                          ),
                         ],
                       ),
+                    ),
 
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors
-                              .petrolDark
-                              .withOpacity(
-                                  0.3),
+                    // ═══════════════════════════════════════════
+                    // SECCIÓN 1: DATOS BÁSICOS DEL VEHÍCULO
+                    // ═══════════════════════════════════════════
+                    _buildSectionHeader(
+                      'Datos Básicos del Vehículo',
+                      'Información principal de identificación del vehículo',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCardContainer(
+                      children: [
+                        // 1. TIPO DE VEHÍCULO (PRIMERO)
+                        DropdownButtonFormField<String>(
+                          initialValue: _vehicleType,
+                          decoration: _inputDecoration(
+                            labelText: 'TIPO DE VEHÍCULO',
+                            hintText: 'Selecciona el tipo',
+                            prefixIcon: Icons.commute_outlined,
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'Automóvil', child: Text('Automóvil')),
+                            DropdownMenuItem(value: 'Sedán', child: Text('Sedán')),
+                            DropdownMenuItem(value: 'SUV', child: Text('SUV')),
+                            DropdownMenuItem(value: 'Camioneta', child: Text('Camioneta')),
+                            DropdownMenuItem(value: 'Hatchback', child: Text('Hatchback')),
+                            DropdownMenuItem(value: 'Pickup', child: Text('Pickup')),
+                            DropdownMenuItem(value: 'Van', child: Text('Van')),
+                            DropdownMenuItem(value: 'Otro', child: Text('Otro')),
+                          ],
+                          onChanged: (val) => setState(() => _vehicleType = val),
+                          validator: (val) {
+                            if (val == null || val.isEmpty) {
+                              return 'Selecciona un tipo de vehículo';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
 
-                          blurRadius: 14,
+                        // 2. PLACA (SEGUNDO - CON VERIFICACIÓN)
+                        TextFormField(
+                          controller: _platesController,
+                          textCapitalization: TextCapitalization.characters,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                            LengthLimitingTextInputFormatter(6),
+                          ],
+                          decoration: _inputDecoration(
+                            labelText: 'PLACA',
+                            hintText: 'Ej. abc123',
+                            prefixIcon: Icons.confirmation_number_outlined,
+                            suffixIcon: _plateVerifying
+                                ? const Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentOrange),
+                                    ),
+                                  )
+                                : _plateAvailable && _platesController.text.trim().length >= 6
+                                    ? const Icon(Icons.check_circle, color: AppColors.success, size: 22)
+                                    : _plateError != null
+                                        ? const Icon(Icons.cancel, color: AppColors.danger, size: 22)
+                                        : null,
+                          ),
+                          validator: (value) {
+                            final val = value?.trim() ?? '';
+                            if (val.isEmpty) {
+                              return 'Ingresa la placa del vehículo';
+                            }
+                            final regex = RegExp(r'^[a-zA-Z]{3}[0-9]{3}$');
+                            if (!regex.hasMatch(val)) {
+                              return 'Debe tener 3 letras y 3 números (ej. abc123)';
+                            }
+                            return null;
+                          },
+                        ),
+                        // Plate verification status
+                        if (_buildPlateStatus() != null) _buildPlateStatus()!,
+                        const SizedBox(height: 14),
 
-                          offset:
-                              const Offset(
-                                  0, 6),
+                        // 3. MARCA
+                        TextFormField(
+                          controller: _brandController,
+                          decoration: _inputDecoration(
+                            labelText: 'MARCA',
+                            hintText: 'Ej. Toyota, Chevrolet, Mazda',
+                            prefixIcon: Icons.directions_car_outlined,
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Ingresa la marca del vehículo';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // 4. MODELO
+                        TextFormField(
+                          controller: _modelController,
+                          decoration: _inputDecoration(
+                            labelText: 'MODELO',
+                            hintText: 'Ej. Corolla, Tracker, Mazda 3',
+                            prefixIcon: Icons.car_rental_outlined,
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Ingresa el modelo del vehículo';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // 5. AÑO
+                        TextFormField(
+                          controller: _yearController,
+                          keyboardType: TextInputType.number,
+                          decoration: _inputDecoration(
+                            labelText: 'AÑO',
+                            hintText: 'Ej. 2024',
+                            prefixIcon: Icons.calendar_today_outlined,
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Ingresa el año del vehículo';
+                            }
+                            final year = int.tryParse(value.trim());
+                            if (year == null || year < 1980 || year > DateTime.now().year + 1) {
+                              return 'Ingresa un año válido';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // 6. COLOR
+                        TextFormField(
+                          controller: _colorController,
+                          decoration: _inputDecoration(
+                            labelText: 'COLOR',
+                            hintText: 'Ej. Blanco, Negro, Gris',
+                            prefixIcon: Icons.palette_outlined,
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Ingresa el color del vehículo';
+                            }
+                            return null;
+                          },
                         ),
                       ],
                     ),
 
-                    child:
-                        ElevatedButton(
-                      onPressed:
-                          _submit,
+                    const SizedBox(height: 24),
 
-                      style:
-                          ElevatedButton
-                              .styleFrom(
-                        backgroundColor:
-                            Colors
-                                .transparent,
-
-                        shadowColor:
-                            Colors
-                                .transparent,
-
-                        foregroundColor:
-                            AppColors
-                                .white,
-
-                        padding:
-                            const EdgeInsets
-                                .symmetric(
-                          vertical: 16,
+                    // ═══════════════════════════════════════════
+                    // SECCIÓN 2: TARJETA DE PROPIEDAD
+                    // ═══════════════════════════════════════════
+                    _buildSectionHeader(
+                      'Tarjeta de Propiedad',
+                      'Documento de tránsito obligatorio del vehículo',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCardContainer(
+                      children: [
+                        _buildImagePicker(
+                          label: 'Tarjeta de Propiedad',
+                          file: _tarjetaPropiedadFile,
+                          url: _tarjetaPropiedadUrl,
+                          isRequired: true,
+                          onTap: () => _pickImage(
+                            title: 'Subir Tarjeta de Propiedad',
+                            onPicked: (file) {
+                              setState(() {
+                                _tarjetaPropiedadFile = file;
+                                _tarjetaPropiedadUrl = null;
+                              });
+                            },
+                          ),
+                          onRemove: (_tarjetaPropiedadFile != null || _tarjetaPropiedadUrl != null)
+                              ? () => setState(() {
+                                    _tarjetaPropiedadFile = null;
+                                    _tarjetaPropiedadUrl = null;
+                                  })
+                              : null,
                         ),
+                      ],
+                    ),
 
-                        elevation: 0,
+                    const SizedBox(height: 24),
 
-                        shape:
-                            RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius
-                                  .circular(
-                                      30),
+                    // ═══════════════════════════════════════════
+                    // SECCIÓN 3: FOTOS DEL VEHÍCULO
+                    // ═══════════════════════════════════════════
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: _buildSectionHeader(
+                            'Fotos del Vehículo',
+                            'Sube hasta 3 fotos para verificar el estado físico',
+                          ),
                         ),
-                      ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentOrangeBg,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${_photoFiles.where((f) => f != null).length + _photoUrls.where((u) => u != null && u.isNotEmpty && !_photoFiles.asMap().entries.any((e) => e.value != null && _photoUrls.indexOf(u) == e.key)).length}/3',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.accentOrange,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCardContainer(
+                      children: [
+                        Row(
+                          children: List.generate(3, (i) {
+                            return Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  left: i == 0 ? 0 : 6,
+                                  right: i == 2 ? 0 : 6,
+                                ),
+                                child: _buildImagePicker(
+                                  label: 'Foto ${i + 1}',
+                                  file: _photoFiles[i],
+                                  url: _photoUrls[i],
+                                  onTap: () => _pickImage(
+                                    title: 'Subir Foto ${i + 1}',
+                                    onPicked: (file) {
+                                      setState(() {
+                                        _photoFiles[i] = file;
+                                        _photoUrls[i] = null;
+                                      });
+                                    },
+                                  ),
+                                  onRemove: (_photoFiles[i] != null || (_photoUrls[i] != null && _photoUrls[i]!.isNotEmpty))
+                                      ? () => setState(() {
+                                            _photoFiles[i] = null;
+                                            _photoUrls[i] = null;
+                                          })
+                                      : null,
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
 
-                      child:
-                          const Text(
-                        'Guardar Vehículo',
+                    const SizedBox(height: 24),
 
-                        style:
-                            TextStyle(
-                          fontSize: 16,
+                    // ═══════════════════════════════════════════
+                    // SECCIÓN 4: VIGENCIA DE DOCUMENTACIÓN
+                    // ═══════════════════════════════════════════
+                    _buildSectionHeader(
+                      'Vigencia de Documentación',
+                      'Fechas de vencimiento legal del SOAT y de la tecnomecánica',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCardContainer(
+                      children: [
+                        // FECHA VENCIMIENTO SOAT
+                        GestureDetector(
+                          onTap: _selectSoatDate,
+                          child: AbsorbPointer(
+                            child: TextFormField(
+                              controller: _soatDateController,
+                              decoration: _inputDecoration(
+                                labelText: 'FECHA VENCIMIENTO DEL SOAT',
+                                hintText: 'Seleccionar fecha',
+                                prefixIcon: Icons.event_available_outlined,
+                                isRequired: false,
+                              ),
+                              validator: (value) {
+                                if (_fechaVencimientoSoat != null) {
+                                  final now = DateTime.now();
+                                  final today = DateTime(now.year, now.month, now.day);
+                                  if (_fechaVencimientoSoat!.isBefore(today)) {
+                                    return 'El SOAT no puede estar vencido';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
 
-                          fontWeight:
-                              FontWeight
-                                  .bold,
+                        // FECHA VENCIMIENTO TECNOMECÁNICA
+                        GestureDetector(
+                          onTap: _selectTecnoDate,
+                          child: AbsorbPointer(
+                            child: TextFormField(
+                              controller: _tecnoDateController,
+                              decoration: _inputDecoration(
+                                labelText: 'FECHA VENCIMIENTO TECNOMECÁNICA',
+                                hintText: 'Seleccionar fecha',
+                                prefixIcon: Icons.event_available_outlined,
+                                isRequired: false,
+                              ),
+                              validator: (value) {
+                                if (_fechaVencimientoTecnomecanica != null) {
+                                  final now = DateTime.now();
+                                  final today = DateTime(now.year, now.month, now.day);
+                                  if (_fechaVencimientoTecnomecanica!.isBefore(today)) {
+                                    return 'La tecnomecánica no puede estar vencida';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
 
-                          letterSpacing:
-                              0.3,
+                    const SizedBox(height: 32),
+
+                    // ═══════════════════════════════════════════
+                    // BOTÓN GUARDAR
+                    // ═══════════════════════════════════════════
+                    SizedBox(
+                      width: double.infinity,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: const LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              AppColors.petrolBase,
+                              AppColors.petrolDark,
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.petrolDark.withOpacity(0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: (_isLoading || _plateVerifying || (_plateError != null && _plateError!.isNotEmpty))
+                              ? null
+                              : _submit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            foregroundColor: AppColors.white,
+                            disabledBackgroundColor: Colors.transparent,
+                            disabledForegroundColor: Colors.white70,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: _isLoading
+                              ? Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2.2,
+                                      ),
+                                    ),
+                                    if (_uploadStatus != null) ...[
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        _uploadStatus!,
+                                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                                      ),
+                                    ],
+                                  ],
+                                )
+                              : Text(
+                                  isEditing ? 'Guardar Cambios' : 'Registrar Vehículo',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
                         ),
                       ),
                     ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── OVERLAY DE CARGA ──
+            if (_isLoading)
+              Container(
+                color: Colors.black.withOpacity(0.3),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 20,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(color: AppColors.petrolBase),
+                        const SizedBox(height: 16),
+                        Text(
+                          _uploadStatus ?? 'Procesando...',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-
-                const SizedBox(
-                    height: 20),
-              ],
-            ),
-          ),
+              ),
+          ],
         ),
       ),
     );
