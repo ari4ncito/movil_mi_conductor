@@ -40,13 +40,15 @@ class UsuarioService {
   static Future<Map<String, dynamic>> obtenerPorId(String id) async {
     final token = await AuthService.obtenerToken();
 
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/usuarios/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      },
-    );
+    final response = await ApiConfig.httpClient
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/usuarios/$id'),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+          },
+        )
+        .timeout(ApiConfig.requestTimeout);
 
     final data = jsonDecode(response.body);
 
@@ -69,14 +71,16 @@ class UsuarioService {
   ) async {
     final token = await AuthService.obtenerToken();
 
-    final response = await http.put(
-      Uri.parse('${ApiConfig.baseUrl}/usuarios/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(datos),
-    );
+    final response = await ApiConfig.httpClient
+        .put(
+          Uri.parse('${ApiConfig.baseUrl}/usuarios/$id'),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(datos),
+        )
+        .timeout(ApiConfig.requestTimeout);
 
     final data = jsonDecode(response.body);
 

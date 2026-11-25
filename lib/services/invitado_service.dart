@@ -26,7 +26,7 @@ class InvitadoService {
         queryParams.isNotEmpty ? queryParams : null,
       );
 
-      final response = await http
+      final response = await ApiConfig.httpClient
           .get(
             uri,
             headers: {'Content-Type': 'application/json'},
@@ -57,13 +57,13 @@ class InvitadoService {
     final uri = ApiConfig.uri('/invitado/solicitud');
 
     try {
-      final response = await http
+      final response = await ApiConfig.httpClient
           .post(
             uri,
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(datos),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(ApiConfig.requestTimeout);
 
       final data = jsonDecode(response.body);
 

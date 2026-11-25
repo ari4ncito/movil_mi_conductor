@@ -19,10 +19,12 @@ class ApiException implements Exception {
 
 class ApiHttpClient {
   final http.Client _client;
+  final bool _ownsClient;
   String? token;
 
   ApiHttpClient({http.Client? client, this.token})
-    : _client = client ?? http.Client();
+    : _client = client ?? ApiConfig.httpClient,
+      _ownsClient = client != null;
 
   Future<Map<String, String>> _getHeaders() async {
     final activeToken = token ?? await AuthService.obtenerToken();
@@ -118,5 +120,9 @@ class ApiHttpClient {
     return jsonDecode(body);
   }
 
-  void dispose() => _client.close();
+  void dispose() {
+    if (_ownsClient) {
+      _client.close();
+    }
+  }
 }

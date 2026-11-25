@@ -57,6 +57,31 @@ class AuthValidators {
       RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
   static final RegExp digitsRegex = RegExp(r"^\d+$");
   static final RegExp alphanumericRegex = RegExp(r"^[0-9A-Za-z]+$");
+  static final RegExp celularColombiaRegex = RegExp(r"^3\d{9}$");
+  static final RegExp passwordUpperRegex = RegExp(r"[A-ZÁÉÍÓÚÑ]");
+  static final RegExp passwordLowerRegex = RegExp(r"[a-záéíóúñ]");
+  static final RegExp passwordNumberRegex = RegExp(r"\d");
+  static final RegExp passwordSpecialRegex =
+      RegExp(r'''[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?`~¡¿]''');
+  static final RegExp tipoViaStartRegex = RegExp(
+    r'^(?:calle|carrera|avenida(?:\s+(?:calle|carrera))?|diagonal|transversal|circular|autopista|cl\.?|cra\.?|kr\.?|av\.?|dg\.?|tv\.?)\s+\d+[a-zA-Z]?(?:\s+(?:bis|sur|norte|este|oeste|[a-zA-Z]))*',
+    caseSensitive: false,
+  );
+  static final RegExp direccionColombiaFullRegex = RegExp(
+    r'^(?:calle|carrera|avenida(?:\s+(?:calle|carrera))?|diagonal|transversal|circular|autopista|cl\.?|cra\.?|kr\.?|av\.?|dg\.?|tv\.?)\s+\d+[a-zA-Z]?(?:\s+(?:bis|sur|norte|este|oeste|[a-zA-Z]))*\s*(?:#|no\.?|nro\.?|n°)\s*\d+[a-zA-Z]?(?:\s+(?:bis|sur|norte|este|oeste|[a-zA-Z]))*\s*(?:-\s*\d+|\s+\d+)\b',
+    caseSensitive: false,
+  );
+
+  static const int minNombreLength = 2;
+  static const int maxNombreLength = 50;
+  static const int minApellidoLength = 2;
+  static const int maxApellidoLength = 50;
+  static const int maxCorreoLength = 100;
+  static const int telefonoLength = 10;
+  static const int minDireccionLength = 5;
+  static const int maxDireccionLength = 120;
+  static const int minRegistrationPasswordLength = 8;
+  static const int maxPasswordLength = 64;
 
   static const List<String> allowedDocumentTypes = [
     'CC',
@@ -75,6 +100,13 @@ class AuthValidators {
       label: 'PPT — Permiso por Protección Temporal',
     ),
     DocumentTypeOption(value: 'PA', label: 'Pasaporte'),
+  ];
+
+  static const List<DocumentTypeOption> clientDocumentTypeOptions = [
+    DocumentTypeOption(value: 'CC', label: 'CC — Cédula'),
+    DocumentTypeOption(value: 'CE', label: 'CE — Extranjería'),
+    DocumentTypeOption(value: 'PPT', label: 'PPT — Temporal'),
+    DocumentTypeOption(value: 'PA', label: 'PA — Pasaporte'),
   ];
 
   static final Map<String, DocumentRule> documentRules = {
@@ -191,8 +223,66 @@ class AuthValidators {
     if (trimmed.isEmpty) {
       return 'El correo electrónico es obligatorio.';
     }
+    if (trimmed.length > maxCorreoLength) {
+      return 'El correo no puede superar los $maxCorreoLength caracteres.';
+    }
     if (!emailRegex.hasMatch(trimmed)) {
       return 'Ingresa un correo electrónico válido.';
+    }
+    return null;
+  }
+
+  static String? validateFechaNacimiento(DateTime? fecha) {
+    if (fecha == null) {
+      return 'La fecha de nacimiento es obligatoria.';
+    }
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final birth = DateTime(fecha.year, fecha.month, fecha.day);
+
+    if (birth.isAfter(today)) {
+      return 'La fecha de nacimiento no puede ser futura.';
+    }
+
+    int edad = today.year - birth.year;
+    if (today.month < birth.month ||
+        (today.month == birth.month && today.day < birth.day)) {
+      edad--;
+    }
+
+    if (edad > 120) {
+      return 'La fecha de nacimiento no es válida.';
+    }
+    if (edad < 18) {
+      return 'Debes ser mayor de 18 años para registrarte (edad actual: $edad años).';
+    }
+    return null;
+  }
+
+  static String? validateRegistrationPassword(String? val) {
+    if (val == null || val.isEmpty) {
+      return 'La contraseña es obligatoria.';
+    }
+    if (RegExp(r'\s').hasMatch(val)) {
+      return 'La contraseña no puede contener espacios.';
+    }
+    if (val.length < minRegistrationPasswordLength) {
+      return 'Mínimo $minRegistrationPasswordLength caracteres.';
+    }
+    if (val.length > maxPasswordLength) {
+      return 'Máximo $maxPasswordLength caracteres.';
+    }
+    if (!passwordUpperRegex.hasMatch(val)) {
+      return 'Incluye al menos una letra mayúscula.';
+    }
+    if (!passwordLowerRegex.hasMatch(val)) {
+      return 'Incluye al menos una letra minúscula.';
+    }
+    if (!passwordNumberRegex.hasMatch(val)) {
+      return 'Incluye al menos un número.';
+    }
+    if (!passwordSpecialRegex.hasMatch(val)) {
+      return 'Incluye al menos un carácter especial.';
     }
     return null;
   }
@@ -233,14 +323,14 @@ class AuthValidators {
   static String? validateNombre(String? val) {
     final trimmed = (val ?? '').trim();
     if (trimmed.isEmpty) return 'El nombre es obligatorio.';
-    if (trimmed.length < 2) {
-      return 'El nombre debe tener al menos 2 caracteres.';
+    if (trimmed.length < minNombreLength) {
+      return 'Mínimo $minNombreLength caracteres.';
     }
-    if (trimmed.length > 100) {
-      return 'El nombre no puede superar los 100 caracteres.';
+    if (trimmed.length > maxNombreLength) {
+      return 'Máximo $maxNombreLength caracteres.';
     }
     if (!nameRegex.hasMatch(trimmed)) {
-      return 'El nombre no puede contener números ni caracteres especiales.';
+      return 'Solo letras, tildes y espacios.';
     }
     return null;
   }
@@ -248,14 +338,14 @@ class AuthValidators {
   static String? validateApellido(String? val) {
     final trimmed = (val ?? '').trim();
     if (trimmed.isEmpty) return 'El apellido es obligatorio.';
-    if (trimmed.length < 2) {
-      return 'El apellido debe tener al menos 2 caracteres.';
+    if (trimmed.length < minApellidoLength) {
+      return 'Mínimo $minApellidoLength caracteres.';
     }
-    if (trimmed.length > 100) {
-      return 'El apellido no puede superar los 100 caracteres.';
+    if (trimmed.length > maxApellidoLength) {
+      return 'Máximo $maxApellidoLength caracteres.';
     }
     if (!nameRegex.hasMatch(trimmed)) {
-      return 'El apellido no puede contener números ni caracteres especiales.';
+      return 'Solo letras, tildes y espacios.';
     }
     return null;
   }
@@ -264,10 +354,10 @@ class AuthValidators {
     final trimmed = (val ?? '').trim();
     if (trimmed.isEmpty) return 'El teléfono es obligatorio.';
     if (!digitsRegex.hasMatch(trimmed)) {
-      return 'El teléfono solo debe contener números.';
+      return 'Solo debe contener números.';
     }
-    if (trimmed.length < 7 || trimmed.length > 10) {
-      return 'El teléfono debe tener entre 7 y 10 dígitos.';
+    if (!celularColombiaRegex.hasMatch(trimmed)) {
+      return 'Celular de 10 dígitos que empiece por 3.';
     }
     return null;
   }
@@ -275,11 +365,15 @@ class AuthValidators {
   static String? validateDireccion(String? val) {
     final trimmed = (val ?? '').trim();
     if (trimmed.isEmpty) return 'La dirección es obligatoria.';
-    if (trimmed.length < 5) {
-      return 'La dirección debe tener al menos 5 caracteres.';
+    if (trimmed.length < minDireccionLength) {
+      return 'Mínimo $minDireccionLength caracteres.';
     }
-    if (trimmed.length > 200) {
-      return 'La dirección no puede superar los 200 caracteres.';
+    if (trimmed.length > maxDireccionLength) {
+      return 'Máximo $maxDireccionLength caracteres.';
+    }
+    if (!tipoViaStartRegex.hasMatch(trimmed) ||
+        !direccionColombiaFullRegex.hasMatch(trimmed)) {
+      return 'Formato inválido (ej: Calle 10 # 20-30).';
     }
     return null;
   }

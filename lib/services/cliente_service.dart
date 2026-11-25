@@ -119,13 +119,15 @@ class ClienteService {
     final token = await AuthService.obtenerToken();
     if (token == null) throw Exception('No hay sesión activa.');
 
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/clientes'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+    final response = await ApiConfig.httpClient
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/clientes'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        )
+        .timeout(ApiConfig.requestTimeout);
 
     final data = jsonDecode(response.body);
 
@@ -226,21 +228,25 @@ class ClienteService {
 
     final usuarioId = (usuario['_id'] ?? usuario['id'])?.toString();
     if (usuarioId == null || usuarioId.isEmpty) return null;
-
+    // 1. Consulta directa optimizada por ID de usuario (1 documento) con verificación de cuenta activa
     final token = await AuthService.obtenerToken();
-    if (token != null) {
+    if (token != null && token.isNotEmpty) {
       try {
-        final response = await http.get(
-          Uri.parse('${ApiConfig.baseUrl}/clientes/usuario/$usuarioId'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-        );
+        final response = await ApiConfig.httpClient
+            .get(
+              Uri.parse('${ApiConfig.baseUrl}/clientes/usuario/$usuarioId'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+              },
+            )
+            .timeout(ApiConfig.requestTimeout);
+
         if (response.statusCode == 401 || response.statusCode == 404) {
           await forzarCierreSesionSiInactivo();
           return null;
         }
+
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           if (data is Map && data['success'] == true && data['data'] is Map) {
@@ -258,12 +264,15 @@ class ClienteService {
       } catch (_) {}
     }
 
+    // 2. Respaldo si el endpoint directo no estuviera disponible
     try {
       final clientes = await getAll();
       for (final c in clientes) {
         if (c is Map<String, dynamic>) {
           final u = c['usuario'];
-          if (u is Map && (u['_id']?.toString() == usuarioId || u['id']?.toString() == usuarioId)) {
+          if (u is Map &&
+              (u['_id']?.toString() == usuarioId ||
+                  u['id']?.toString() == usuarioId)) {
             return c;
           } else if (u?.toString() == usuarioId) {
             return c;
