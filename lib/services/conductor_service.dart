@@ -15,16 +15,18 @@ class ConductorService {
   ) async {
     final token = await AuthService.obtenerToken();
 
-    final response = await http.get(
-      Uri.parse(
-        '${ApiConfig.baseUrl}/conductores/usuario/$usuarioId',
-      ),
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty)
-          'Authorization': 'Bearer $token',
-      },
-    );
+    final response = await ApiConfig.httpClient
+        .get(
+          Uri.parse(
+            '${ApiConfig.baseUrl}/conductores/usuario/$usuarioId',
+          ),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null && token.isNotEmpty)
+              'Authorization': 'Bearer $token',
+          },
+        )
+        .timeout(ApiConfig.requestTimeout);
 
     final data = jsonDecode(response.body);
 
@@ -51,19 +53,21 @@ class ConductorService {
   ) async {
     final token = await AuthService.obtenerToken();
 
-    final response = await http.patch(
-      Uri.parse(
-        '${ApiConfig.baseUrl}/conductores/$conductorId/disponibilidad',
-      ),
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty)
-          'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'disponible': disponible,
-      }),
-    );
+    final response = await ApiConfig.httpClient
+        .patch(
+          Uri.parse(
+            '${ApiConfig.baseUrl}/conductores/$conductorId/disponibilidad',
+          ),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null && token.isNotEmpty)
+              'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'disponible': disponible,
+          }),
+        )
+        .timeout(ApiConfig.requestTimeout);
 
     final data = jsonDecode(response.body);
 

@@ -8,7 +8,8 @@
     <application
         android:label="Mi Conductor"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
 
         <!-- Canal y diseño predeterminado para notificaciones FCM -->
         <meta-data
