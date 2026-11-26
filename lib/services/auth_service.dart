@@ -43,7 +43,7 @@ class AuthService {
           .timeout(effectiveTimeout);
     }
 
-    return http
+    return ApiConfig.httpClient
         .post(uri, headers: headers, body: encoded)
         .timeout(effectiveTimeout);
   }
@@ -53,7 +53,7 @@ class AuthService {
     Map<String, String>? headers,
     Duration? timeout,
   }) {
-    final effectiveTimeout = timeout ?? const Duration(seconds: 8);
+    final effectiveTimeout = timeout ?? const Duration(seconds: 15);
 
     if (httpClientOverride != null) {
       return httpClientOverride!
@@ -61,7 +61,9 @@ class AuthService {
           .timeout(effectiveTimeout);
     }
 
-    return http.get(uri, headers: headers).timeout(effectiveTimeout);
+    return ApiConfig.httpClient
+        .get(uri, headers: headers)
+        .timeout(effectiveTimeout);
   }
 
   static Map<String, String> _extractFieldErrors(dynamic rawErrors) {
@@ -157,9 +159,12 @@ class AuthService {
     required String tipoDocumento,
     required String documento,
     required String correo,
+    required String fechaNacimiento,
     required String password,
     required String telefono,
     required String direccion,
+    required bool aceptaTerminos,
+    String? fechaAceptacionTerminos,
   }) async {
     http.Response response;
     try {
@@ -171,9 +176,13 @@ class AuthService {
           'tipoDocumento': tipoDocumento,
           'documento': documento,
           'correo': correo,
+          'fechaNacimiento': fechaNacimiento,
           'password': password,
           'telefono': telefono,
           'direccion': direccion,
+          'aceptaTerminos': aceptaTerminos,
+          'fechaAceptacionTerminos':
+              fechaAceptacionTerminos ?? DateTime.now().toIso8601String(),
         },
       );
     } on TimeoutException {

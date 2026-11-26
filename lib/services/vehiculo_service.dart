@@ -4,6 +4,20 @@ import '../config/api_config.dart';
 import 'auth_service.dart';
 
 class VehiculoService {
+  // El backend responde errores de validación como [{campo, mensaje}]; se muestran solo los mensajes.
+  static String? _mensajesDeError(dynamic errors) {
+    final mensajes = <String>[];
+    if (errors is List) {
+      for (final item in errors) {
+        final msg = item is Map ? item['mensaje']?.toString() : item?.toString();
+        if (msg != null && msg.isNotEmpty) mensajes.add(msg);
+      }
+    } else if (errors is Map) {
+      mensajes.addAll(errors.values.map((v) => v.toString()).where((v) => v.isNotEmpty));
+    }
+    return mensajes.isEmpty ? null : mensajes.join('\n');
+  }
+
   // =========================
   // OBTENER TODOS LOS VEHICULOS
   // =========================
@@ -78,13 +92,7 @@ class VehiculoService {
     }
 
     String errorMsg = data['message']?.toString() ?? 'Error al crear el vehículo.';
-    if (data['errors'] != null) {
-      if (data['errors'] is List && (data['errors'] as List).isNotEmpty) {
-        errorMsg = (data['errors'] as List).join('\n');
-      } else if (data['errors'] is Map) {
-        errorMsg = (data['errors'] as Map).values.join('\n');
-      }
-    }
+    errorMsg = _mensajesDeError(data['errors']) ?? errorMsg;
 
     throw Exception(errorMsg);
   }
@@ -112,13 +120,7 @@ class VehiculoService {
     }
 
     String errorMsg = data['message']?.toString() ?? 'Error al actualizar el vehículo.';
-    if (data['errors'] != null) {
-      if (data['errors'] is List && (data['errors'] as List).isNotEmpty) {
-        errorMsg = (data['errors'] as List).join('\n');
-      } else if (data['errors'] is Map) {
-        errorMsg = (data['errors'] as Map).values.join('\n');
-      }
-    }
+    errorMsg = _mensajesDeError(data['errors']) ?? errorMsg;
 
     throw Exception(errorMsg);
   }
@@ -148,13 +150,19 @@ class VehiculoService {
   // =========================
   // VERIFICAR DISPONIBILIDAD DE PLACA
   // =========================
-  static Future<Map<String, dynamic>> verificarPlaca(String placa) async {
+  /// [excluirId]: id del vehículo en edición, para que no se detecte a sí mismo como duplicado.
+  static Future<Map<String, dynamic>> verificarPlaca(String placa, {String? excluirId}) async {
     final token = await AuthService.obtenerToken();
     if (token == null) throw Exception('No hay sesión activa.');
 
-    final placaClean = placa.trim().toUpperCase();
+    final placaClean = placa.replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/vehiculos/verificar-placa/${Uri.encodeComponent(placaClean)}',
+    ).replace(
+      queryParameters: (excluirId != null && excluirId.isNotEmpty) ? {'excluirId': excluirId} : null,
+    );
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/vehiculos/verificar-placa/$placaClean'),
+      uri,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -200,13 +208,7 @@ class VehiculoService {
     }
 
     String errorMsg = data['message']?.toString() ?? 'Error al cambiar estado del vehículo.';
-    if (data['errors'] != null) {
-      if (data['errors'] is List && (data['errors'] as List).isNotEmpty) {
-        errorMsg = (data['errors'] as List).join('\n');
-      } else if (data['errors'] is Map) {
-        errorMsg = (data['errors'] as Map).values.join('\n');
-      }
-    }
+    errorMsg = _mensajesDeError(data['errors']) ?? errorMsg;
     throw Exception(errorMsg);
   }
 }

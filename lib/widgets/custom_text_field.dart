@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class CustomTextField extends StatelessWidget {
   final String labelText;
@@ -17,6 +18,11 @@ class CustomTextField extends StatelessWidget {
   final FocusNode? focusNode;
   final bool requiredMark;
   final TextInputAction? textInputAction;
+  final int? maxLength;
+  final List<TextInputFormatter>? inputFormatters;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final bool compact;
 
   const CustomTextField({
     super.key,
@@ -36,6 +42,11 @@ class CustomTextField extends StatelessWidget {
     this.focusNode,
     this.requiredMark = false,
     this.textInputAction,
+    this.maxLength,
+    this.inputFormatters,
+    this.readOnly = false,
+    this.onTap,
+    this.compact = false,
   });
 
   @override
@@ -51,11 +62,11 @@ class CustomTextField extends StatelessWidget {
 
     Widget? effectiveSuffix;
     if (isValidating) {
-      effectiveSuffix = const Padding(
-        padding: EdgeInsets.all(14),
-        child: SizedBox(
-          width: 16,
-          height: 16,
+      effectiveSuffix = Padding(
+        padding: EdgeInsets.all(compact ? 10 : 14),
+        child: const SizedBox(
+          width: 14,
+          height: 14,
           child: CircularProgressIndicator(
             strokeWidth: 2,
             color: Color(0xFFFB9833),
@@ -69,14 +80,15 @@ class CustomTextField extends StatelessWidget {
         onTap: onSuffixIconTap,
         child: Icon(
           suffixIcon,
+          size: compact ? 18 : 22,
           color: hasError ? const Color(0xFFE53935) : Colors.grey,
         ),
       );
     } else if (isValid && !hasError) {
-      effectiveSuffix = const Icon(
+      effectiveSuffix = Icon(
         Icons.check_circle_rounded,
-        color: Color(0xFF2E7D32),
-        size: 20,
+        color: const Color(0xFF2E7D32),
+        size: compact ? 16 : 20,
       );
     }
 
@@ -88,7 +100,7 @@ class CustomTextField extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
             color: const Color(0xFFF0F4F8),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(compact ? 10 : 12),
             border: Border.all(
               color: borderColor,
               width: (hasError || isValid) ? 1.5 : 0.0,
@@ -100,35 +112,51 @@ class CustomTextField extends StatelessWidget {
             obscureText: obscureText,
             keyboardType: keyboardType,
             textInputAction: textInputAction,
+            maxLength: maxLength,
+            inputFormatters: inputFormatters,
+            readOnly: readOnly,
+            onTap: onTap,
             onChanged: onChanged,
+            style: TextStyle(fontSize: compact ? 13 : 14.5),
             decoration: InputDecoration(
+              counterText: '',
+              isDense: compact,
               labelText: requiredMark ? '$labelText *' : labelText,
               labelStyle: TextStyle(
+                fontSize: compact ? 12 : 14,
                 color: hasError
                     ? const Color(0xFFE53935)
                     : (isValid ? const Color(0xFF2E7D32) : Colors.grey[700]),
               ),
               hintText: hintText,
+              hintStyle: TextStyle(fontSize: compact ? 12 : 14),
               prefixIcon: prefixIcon != null
                   ? Icon(
                       prefixIcon,
+                      size: compact ? 18 : 22,
                       color: hasError
                           ? const Color(0xFFE53935)
                           : (isValid ? const Color(0xFF2E7D32) : Colors.grey),
                     )
                   : null,
+              prefixIconConstraints: compact
+                  ? const BoxConstraints(minWidth: 36, minHeight: 36)
+                  : null,
               suffixIcon: effectiveSuffix,
+              suffixIconConstraints: compact
+                  ? const BoxConstraints(minWidth: 34, minHeight: 36)
+                  : null,
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: compact ? 10 : 16,
+                vertical: compact ? 9 : 14,
               ),
             ),
           ),
         ),
         if (hasError)
           Padding(
-            padding: const EdgeInsets.only(top: 4, left: 8),
+            padding: EdgeInsets.only(top: compact ? 2 : 4, left: 6),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -136,7 +164,7 @@ class CustomTextField extends StatelessWidget {
                   padding: EdgeInsets.only(top: 1),
                   child: Icon(
                     Icons.error_outline_rounded,
-                    size: 14,
+                    size: 12,
                     color: Color(0xFFE53935),
                   ),
                 ),
@@ -144,9 +172,9 @@ class CustomTextField extends StatelessWidget {
                 Expanded(
                   child: Text(
                     errorText!,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFFE53935),
+                    style: TextStyle(
+                      fontSize: compact ? 10.5 : 12,
+                      color: const Color(0xFFE53935),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
