@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/vehiculo_service.dart';
 import '../../../services/cloudinary_service.dart';
+import '../../../utils/vehicle_validators.dart';
 
 // ─────────────────────────────────────────────
 // Paleta de la app
@@ -170,14 +171,22 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   // ─────────────────────────────────────────────
   // VERIFICACIÓN DE PLACA EN TIEMPO REAL
   // ─────────────────────────────────────────────
+  String? get _editingVehicleId {
+    final v = widget.vehicleToEdit;
+    if (v == null) return null;
+    final id = (v['_id'] ?? v['id'])?.toString();
+    return (id == null || id.isEmpty) ? null : id;
+  }
+
   void _onPlateChanged() {
-    final placa = _platesController.text.trim().toUpperCase();
+    final placa = VehicleValidators.normalizePlaca(_platesController.text);
     final isEditing = widget.vehicleToEdit != null;
 
     // Si estamos editando y la placa no cambió, no verificar
     if (isEditing) {
-      final originalPlaca = (widget.vehicleToEdit['placa'] ?? '').toString().trim().toUpperCase();
+      final originalPlaca = VehicleValidators.normalizePlaca(widget.vehicleToEdit['placa']?.toString());
       if (placa == originalPlaca) {
+        _plateDebounce?.cancel();
         setState(() {
           _plateError = null;
           _plateAvailable = true;
@@ -189,6 +198,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     }
 
     if (placa.length < 6) {
+      _plateDebounce?.cancel();
       setState(() {
         _plateError = null;
         _plateAvailable = false;
@@ -198,10 +208,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       return;
     }
 
-    final plateRegex = RegExp(r'^[A-Z]{3}[0-9]{3}$');
-    if (!plateRegex.hasMatch(placa)) {
+    final formatError = VehicleValidators.validatePlaca(placa);
+    if (formatError != null) {
+      _plateDebounce?.cancel();
       setState(() {
-        _plateError = 'Debe tener 3 letras y 3 números (ej. ABC123)';
+        _plateError = formatError;
         _plateAvailable = false;
         _plateVerifying = false;
         _plateAlertMessage = _plateError;
@@ -219,10 +230,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     _plateDebounce?.cancel();
     _plateDebounce = Timer(const Duration(milliseconds: 500), () async {
       try {
-        final result = await VehiculoService.verificarPlaca(placa);
-        if (!mounted) return;
+        final result = await VehiculoService.verificarPlaca(placa, excluirId: _editingVehicleId);
+        // Si el usuario siguió escribiendo, esta respuesta ya no aplica
+        if (!mounted || VehicleValidators.normalizePlaca(_platesController.text) != placa) return;
         final existe = result['existe'] == true;
-        final permitido = result['permitido'] == true;
+        // Reutilizar una placa vendida solo aplica al registrar, nunca al editar (igual que la web y el backend)
+        final permitido = result['permitido'] == true && !isEditing;
 
         if (existe && !permitido) {
           setState(() {
@@ -247,8 +260,18 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       } catch (e) {
         if (!mounted) return;
         debugPrint('Error verificando placa: $e');
+        final msg = e.toString().replaceAll('Exception: ', '');
+        // Formato rechazado por el servidor: se muestra. Errores de red no bloquean aquí;
+        // la placa se vuelve a validar al guardar.
+        if (msg.toLowerCase().contains('placa')) {
+          setState(() {
+            _plateError = msg;
+            _plateAvailable = false;
+            _plateAlertMessage = msg;
+          });
+        }
       } finally {
-        if (mounted) {
+        if (mounted && VehicleValidators.normalizePlaca(_platesController.text) == placa) {
           setState(() => _plateVerifying = false);
         }
       }
@@ -373,14 +396,15 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   Future<void> _selectSoatDate() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final initial = _fechaVencimientoSoat != null && !_fechaVencimientoSoat!.isBefore(today)
+    final tomorrow = DateTime(today.year, today.month, today.day + 1);
+    final initial = _fechaVencimientoSoat != null && _fechaVencimientoSoat!.isAfter(today)
         ? _fechaVencimientoSoat!
-        : today;
+        : tomorrow;
 
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: today,
+      firstDate: tomorrow,
       lastDate: DateTime(now.year + 15),
       builder: (context, child) {
         return Theme(
@@ -409,14 +433,15 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   Future<void> _selectTecnoDate() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final initial = _fechaVencimientoTecnomecanica != null && !_fechaVencimientoTecnomecanica!.isBefore(today)
+    final tomorrow = DateTime(today.year, today.month, today.day + 1);
+    final initial = _fechaVencimientoTecnomecanica != null && _fechaVencimientoTecnomecanica!.isAfter(today)
         ? _fechaVencimientoTecnomecanica!
-        : today;
+        : tomorrow;
 
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: today,
+      firstDate: tomorrow,
       lastDate: DateTime(now.year + 15),
       builder: (context, child) {
         return Theme(
@@ -469,25 +494,27 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       return;
     }
 
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
     final isEditing = widget.vehicleToEdit != null;
 
-    if (!isEditing && _fechaVencimientoSoat != null && _fechaVencimientoSoat!.isBefore(today)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: AppColors.danger,
-          content: Text('No se permite registrar con el SOAT vencido.'),
-        ),
-      );
-      return;
-    }
+    // Mismas reglas que la web y el backend, comprobadas ANTES de subir imágenes a Cloudinary
+    final cantidadFotos = List.generate(
+      3,
+      (i) => _photoFiles[i] != null || (_photoUrls[i] != null && _photoUrls[i]!.isNotEmpty),
+    ).where((tiene) => tiene).length;
 
-    if (!isEditing && _fechaVencimientoTecnomecanica != null && _fechaVencimientoTecnomecanica!.isBefore(today)) {
+    final primerError = VehicleValidators.validateFechaVencimiento(_fechaVencimientoSoat, 'del SOAT') ??
+        VehicleValidators.validateFechaVencimiento(_fechaVencimientoTecnomecanica, 'de la tecnomecánica') ??
+        VehicleValidators.validateTarjetaPropiedad(
+          tieneArchivo: _tarjetaPropiedadFile != null,
+          url: _tarjetaPropiedadUrl,
+        ) ??
+        VehicleValidators.validateCantidadFotos(cantidadFotos);
+
+    if (primerError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           backgroundColor: AppColors.danger,
-          content: Text('No se permite registrar con la tecnomecánica vencida.'),
+          content: Text(primerError),
         ),
       );
       return;
@@ -495,10 +522,31 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
     setState(() {
       _isLoading = true;
-      _uploadStatus = 'Preparando...';
+      _uploadStatus = 'Verificando placa...';
     });
 
     try {
+      // Re-verificar la placa en el servidor: otro usuario pudo registrarla mientras se llenaba el formulario
+      final placaNormalizada = VehicleValidators.normalizePlaca(_platesController.text);
+      final placaOriginal = VehicleValidators.normalizePlaca(widget.vehicleToEdit?['placa']?.toString());
+      if (!isEditing || placaNormalizada != placaOriginal) {
+        final check = await VehiculoService.verificarPlaca(placaNormalizada, excluirId: _editingVehicleId);
+        final existe = check['existe'] == true;
+        final permitidoPorVenta = !isEditing && check['permitido'] == true;
+        if (existe && !permitidoPorVenta) {
+          final mensaje =
+              (check['mensaje'] ?? 'La placa ingresada ya se encuentra registrada en otro vehículo.').toString();
+          if (mounted) {
+            setState(() {
+              _plateError = mensaje;
+              _plateAvailable = false;
+              _plateAlertMessage = mensaje;
+            });
+          }
+          throw Exception(mensaje);
+        }
+      }
+
       final usuarioId = await AuthService.obtenerUsuarioId();
       if (usuarioId == null) throw Exception('No hay usuario activo en sesión.');
 
@@ -543,12 +591,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       final vehiculoData = <String, dynamic>{
         'cliente': clienteId,
         'marca': _brandController.text.trim(),
-        'modelo': _modelController.text.trim().isEmpty
-            ? _brandController.text.trim()
-            : _modelController.text.trim(),
-        'placa': _platesController.text.trim().toUpperCase(),
+        'modelo': _modelController.text.trim(),
+        'placa': placaNormalizada,
         'color': _colorController.text.trim(),
-        'anio': int.tryParse(_yearController.text.trim()) ?? DateTime.now().year,
+        'anio': int.parse(_yearController.text.trim()),
         'tipoVehiculo': _vehicleType ?? 'Automóvil',
         if (_fechaVencimientoSoat != null)
           'fechaVencimientoSoat': _fechaVencimientoSoat!.toIso8601String(),
@@ -1102,12 +1148,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             DropdownMenuItem(value: 'Otro', child: Text('Otro')),
                           ],
                           onChanged: (val) => setState(() => _vehicleType = val),
-                          validator: (val) {
-                            if (val == null || val.isEmpty) {
-                              return 'Selecciona un tipo de vehículo';
-                            }
-                            return null;
-                          },
+                          validator: VehicleValidators.validateTipo,
                         ),
                         const SizedBox(height: 14),
 
@@ -1118,10 +1159,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                           inputFormatters: [
                             FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
                             LengthLimitingTextInputFormatter(6),
+                            TextInputFormatter.withFunction(
+                              (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
+                            ),
                           ],
                           decoration: _inputDecoration(
                             labelText: 'PLACA',
-                            hintText: 'Ej. abc123',
+                            hintText: 'Ej. ABC123 o ABC12D',
                             prefixIcon: Icons.confirmation_number_outlined,
                             suffixIcon: _plateVerifying
                                 ? const Padding(
@@ -1138,17 +1182,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                         ? const Icon(Icons.cancel, color: AppColors.danger, size: 22)
                                         : null,
                           ),
-                          validator: (value) {
-                            final val = value?.trim() ?? '';
-                            if (val.isEmpty) {
-                              return 'Ingresa la placa del vehículo';
-                            }
-                            final regex = RegExp(r'^[a-zA-Z]{3}[0-9]{3}$');
-                            if (!regex.hasMatch(val)) {
-                              return 'Debe tener 3 letras y 3 números (ej. abc123)';
-                            }
-                            return null;
-                          },
+                          validator: VehicleValidators.validatePlaca,
                         ),
                         // Plate verification status
                         if (_buildPlateStatus() != null) _buildPlateStatus()!,
@@ -1162,12 +1196,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             hintText: 'Ej. Toyota, Chevrolet, Mazda',
                             prefixIcon: Icons.directions_car_outlined,
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Ingresa la marca del vehículo';
-                            }
-                            return null;
-                          },
+                          validator: VehicleValidators.validateMarca,
                         ),
                         const SizedBox(height: 14),
 
@@ -1179,12 +1208,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             hintText: 'Ej. Corolla, Tracker, Mazda 3',
                             prefixIcon: Icons.car_rental_outlined,
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Ingresa el modelo del vehículo';
-                            }
-                            return null;
-                          },
+                          validator: VehicleValidators.validateModelo,
                         ),
                         const SizedBox(height: 14),
 
@@ -1197,16 +1221,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             hintText: 'Ej. 2024',
                             prefixIcon: Icons.calendar_today_outlined,
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Ingresa el año del vehículo';
-                            }
-                            final year = int.tryParse(value.trim());
-                            if (year == null || year < 1980 || year > DateTime.now().year + 1) {
-                              return 'Ingresa un año válido';
-                            }
-                            return null;
-                          },
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(4),
+                          ],
+                          validator: VehicleValidators.validateAnio,
                         ),
                         const SizedBox(height: 14),
 
@@ -1218,12 +1237,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             hintText: 'Ej. Blanco, Negro, Gris',
                             prefixIcon: Icons.palette_outlined,
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Ingresa el color del vehículo';
-                            }
-                            return null;
-                          },
+                          validator: VehicleValidators.validateColor,
                         ),
                       ],
                     ),
@@ -1355,18 +1369,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 labelText: 'FECHA VENCIMIENTO DEL SOAT',
                                 hintText: 'Seleccionar fecha',
                                 prefixIcon: Icons.event_available_outlined,
-                                isRequired: false,
+                                isRequired: true,
                               ),
-                              validator: (value) {
-                                if (_fechaVencimientoSoat != null) {
-                                  final now = DateTime.now();
-                                  final today = DateTime(now.year, now.month, now.day);
-                                  if (_fechaVencimientoSoat!.isBefore(today)) {
-                                    return 'El SOAT no puede estar vencido';
-                                  }
-                                }
-                                return null;
-                              },
+                              validator: (_) =>
+                                  VehicleValidators.validateFechaVencimiento(_fechaVencimientoSoat, 'del SOAT'),
                             ),
                           ),
                         ),
@@ -1382,18 +1388,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 labelText: 'FECHA VENCIMIENTO TECNOMECÁNICA',
                                 hintText: 'Seleccionar fecha',
                                 prefixIcon: Icons.event_available_outlined,
-                                isRequired: false,
+                                isRequired: true,
                               ),
-                              validator: (value) {
-                                if (_fechaVencimientoTecnomecanica != null) {
-                                  final now = DateTime.now();
-                                  final today = DateTime(now.year, now.month, now.day);
-                                  if (_fechaVencimientoTecnomecanica!.isBefore(today)) {
-                                    return 'La tecnomecánica no puede estar vencida';
-                                  }
-                                }
-                                return null;
-                              },
+                              validator: (_) => VehicleValidators.validateFechaVencimiento(
+                                _fechaVencimientoTecnomecanica,
+                                'de la tecnomecánica',
+                              ),
                             ),
                           ),
                         ),
