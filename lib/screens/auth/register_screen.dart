@@ -302,7 +302,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         final res = await AuthService.checkEmail(trimmed);
         final exists = res['exists'] == true;
 
-        if (!mounted) return;
+        if (!mounted || _correoController.text.trim() != trimmed) return;
         setState(() {
           if (exists) {
             _asyncErrors['correo'] =
@@ -312,7 +312,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           }
         });
       } catch (e) {
-        if (!mounted) return;
+        if (!mounted || _correoController.text.trim() != trimmed) return;
         final msg = e.toString().toLowerCase();
         if (msg.contains('ya está registrado') || msg.contains('ya existe')) {
           setState(() {
@@ -321,7 +321,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           });
         }
       } finally {
-        if (mounted) {
+        if (mounted && _correoController.text.trim() == trimmed) {
           setState(() {
             _validating['correo'] = false;
           });
@@ -362,7 +362,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
         final exists = res['exists'] == true;
 
-        if (!mounted) return;
+        if (!mounted || _documentoController.text.trim() != trimmed) return;
         setState(() {
           if (exists) {
             _asyncErrors['documento'] =
@@ -372,7 +372,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           }
         });
       } catch (e) {
-        if (!mounted) return;
+        if (!mounted || _documentoController.text.trim() != trimmed) return;
         final msg = e.toString().toLowerCase();
         if (msg.contains('ya está registrado') || msg.contains('ya existe')) {
           setState(() {
@@ -381,7 +381,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           });
         }
       } finally {
-        if (mounted) {
+        if (mounted && _documentoController.text.trim() == trimmed) {
           setState(() {
             _validating['documento'] = false;
           });
@@ -521,6 +521,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // REGISTRAR CLIENTE
   // ==========================================
 
+  bool _esErrorDuplicado(Object e, String mensaje) {
+    if (e is AuthApiException && e.statusCode == 409) return true;
+    final msg = mensaje.toLowerCase();
+    return msg.contains('registrad') || msg.contains('ya existe');
+  }
+
   Future<void> _register() async {
     if (_isLoading) return;
 
@@ -602,12 +608,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             _touched[campo] = true;
           });
         });
-      } else if (rawError.toLowerCase().contains('correo')) {
+      } else if (_esErrorDuplicado(e, rawError) && rawError.toLowerCase().contains('correo')) {
         setState(() {
           _asyncErrors['correo'] = 'Este correo electrónico ya está registrado.';
           _touched['correo'] = true;
         });
-      } else if (rawError.toLowerCase().contains('documento')) {
+      } else if (_esErrorDuplicado(e, rawError) && rawError.toLowerCase().contains('documento')) {
         setState(() {
           _asyncErrors['documento'] =
               'Este número de documento ya está registrado.';
