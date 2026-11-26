@@ -511,7 +511,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                                 color: Color(0xFF2B2003),
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
-                                fontFamily: 'monospace',
+                                fontFamily: 'Arial',
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -715,7 +715,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                                 (vehicle['placa'] ?? '').toString().toUpperCase(),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w800,
-                                  fontFamily: 'monospace',
+                                  fontFamily: 'Arial',
                                   fontSize: 12,
                                 ),
                               ),

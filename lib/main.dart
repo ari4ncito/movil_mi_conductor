@@ -44,6 +44,7 @@ class MyApp extends StatelessWidget {
       title: 'Mi Conductor',
 
       theme: ThemeData(
+        fontFamily: 'Arial',
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFFFF8A00),
         ),
