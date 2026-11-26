@@ -108,10 +108,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _handleFocusChange(String field, FocusNode node) {
-    if (!node.hasFocus) {
-      setState(() {
+    if (!mounted) return;
+    setState(() {
+      if (!node.hasFocus) {
         _touched[field] = true;
-      });
+      }
+    });
+    if (!node.hasFocus) {
       _validateField(field);
     }
   }
@@ -302,7 +305,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         final res = await AuthService.checkEmail(trimmed);
         final exists = res['exists'] == true;
 
-        if (!mounted) return;
+        if (!mounted || _correoController.text.trim() != trimmed) return;
         setState(() {
           if (exists) {
             _asyncErrors['correo'] =
@@ -312,7 +315,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           }
         });
       } catch (e) {
-        if (!mounted) return;
+        if (!mounted || _correoController.text.trim() != trimmed) return;
         final msg = e.toString().toLowerCase();
         if (msg.contains('ya está registrado') || msg.contains('ya existe')) {
           setState(() {
@@ -321,7 +324,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           });
         }
       } finally {
-        if (mounted) {
+        if (mounted && _correoController.text.trim() == trimmed) {
           setState(() {
             _validating['correo'] = false;
           });
@@ -362,7 +365,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
         final exists = res['exists'] == true;
 
-        if (!mounted) return;
+        if (!mounted || _documentoController.text.trim() != trimmed) return;
         setState(() {
           if (exists) {
             _asyncErrors['documento'] =
@@ -372,7 +375,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           }
         });
       } catch (e) {
-        if (!mounted) return;
+        if (!mounted || _documentoController.text.trim() != trimmed) return;
         final msg = e.toString().toLowerCase();
         if (msg.contains('ya está registrado') || msg.contains('ya existe')) {
           setState(() {
@@ -381,7 +384,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           });
         }
       } finally {
-        if (mounted) {
+        if (mounted && _documentoController.text.trim() == trimmed) {
           setState(() {
             _validating['documento'] = false;
           });
@@ -521,6 +524,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // REGISTRAR CLIENTE
   // ==========================================
 
+  bool _esErrorDuplicado(Object e, String mensaje) {
+    if (e is AuthApiException && e.statusCode == 409) return true;
+    final msg = mensaje.toLowerCase();
+    return msg.contains('registrad') || msg.contains('ya existe');
+  }
+
   Future<void> _register() async {
     if (_isLoading) return;
 
@@ -602,12 +611,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             _touched[campo] = true;
           });
         });
-      } else if (rawError.toLowerCase().contains('correo')) {
+      } else if (_esErrorDuplicado(e, rawError) && rawError.toLowerCase().contains('correo')) {
         setState(() {
           _asyncErrors['correo'] = 'Este correo electrónico ya está registrado.';
           _touched['correo'] = true;
         });
-      } else if (rawError.toLowerCase().contains('documento')) {
+      } else if (_esErrorDuplicado(e, rawError) && rawError.toLowerCase().contains('documento')) {
         setState(() {
           _asyncErrors['documento'] =
               'Este número de documento ya está registrado.';
@@ -657,19 +666,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (pwd.isEmpty) {
       strengthText = 'Sin evaluar';
-      strengthColor = Colors.grey;
+      strengthColor = Colors.white.withValues(alpha: 0.45);
       strengthProgress = 0.0;
     } else if (score <= 1 || hasSpaces) {
       strengthText = 'Muy débil';
-      strengthColor = const Color(0xFFE53935);
+      strengthColor = const Color(0xFFF43F5E);
       strengthProgress = 0.2;
     } else if (score == 2) {
       strengthText = 'Débil';
-      strengthColor = const Color(0xFFEF5350);
+      strengthColor = const Color(0xFFFB7185);
       strengthProgress = 0.4;
     } else if (score == 3) {
       strengthText = 'Media';
-      strengthColor = Colors.amber.shade700;
+      strengthColor = const Color(0xFFFBBF24);
       strengthProgress = 0.6;
     } else if (score == 4) {
       strengthText = 'Casi lista';
@@ -677,7 +686,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       strengthProgress = 0.8;
     } else {
       strengthText = 'Segura';
-      strengthColor = const Color(0xFF2E7D32);
+      strengthColor = const Color(0xFF10B981);
       strengthProgress = 1.0;
     }
 
@@ -690,14 +699,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded,
             size: 12,
-            color: satisfied ? const Color(0xFF2E7D32) : Colors.grey,
+            color: satisfied
+                ? const Color(0xFF10B981)
+                : Colors.white.withValues(alpha: 0.38),
           ),
           const SizedBox(width: 3),
           Text(
             text,
             style: TextStyle(
               fontSize: 10.5,
-              color: satisfied ? const Color(0xFF2E7D32) : Colors.grey.shade700,
+              color: satisfied
+                  ? const Color(0xFF6EE7B7)
+                  : Colors.white.withValues(alpha: 0.62),
               fontWeight: satisfied ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
@@ -706,12 +719,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(top: 6),
+      margin: const EdgeInsets.only(top: 7),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade300),
+        color: const Color(0xFF041722),
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -720,7 +733,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               Text(
                 'Seguridad: ',
-                style: TextStyle(fontSize: 10.5, color: Colors.grey.shade700),
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: Colors.white.withValues(alpha: 0.65),
+                ),
               ),
               Text(
                 strengthText,
@@ -736,7 +752,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: strengthProgress,
-                    backgroundColor: Colors.grey.shade200,
+                    backgroundColor: Colors.white.withValues(alpha: 0.10),
                     valueColor: AlwaysStoppedAnimation<Color>(strengthColor),
                     minHeight: 4,
                   ),
@@ -773,43 +789,87 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          height: 44,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0F4F8),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: hasError
-                  ? const Color(0xFFE53935)
-                  : (isValid ? const Color(0xFF2E7D32) : Colors.transparent),
-              width: (hasError || isValid) ? 1.5 : 0.0,
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: 5),
+          child: RichText(
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            text: TextSpan(
+              style: TextStyle(
+                fontFamily: 'Arial',
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: Colors.white.withValues(alpha: 0.74),
+              ),
+              children: const [
+                TextSpan(text: 'TIPO DE DOCUMENTO'),
+                TextSpan(
+                  text: ' *',
+                  style: TextStyle(
+                    color: Color(0xFFFB9833),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+        ),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: 46,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0xFF041722),
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: hasError
+                  ? const Color(0xFFF43F5E)
+                  : (isValid
+                      ? const Color(0xFF10B981).withValues(alpha: 0.75)
+                      : Colors.white.withValues(alpha: 0.14)),
+              width: (hasError || isValid) ? 1.4 : 1.1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               isExpanded: true,
               isDense: true,
+              dropdownColor: const Color(0xFF082231),
               value: _tipoDocumento,
               style: const TextStyle(
-                fontSize: 12.5,
-                color: Color(0xFF012538),
-                fontWeight: FontWeight.w500,
+                fontFamily: 'Arial',
+                fontSize: 13.5,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
               ),
               icon: const Icon(
-                Icons.arrow_drop_down,
-                color: Color(0xFF12566B),
-                size: 20,
+                Icons.keyboard_arrow_down_rounded,
+                color: Color(0xFFFB9833),
+                size: 19,
               ),
               items: AuthValidators.clientDocumentTypeOptions
                   .map(
                     (opt) => DropdownMenuItem<String>(
                       value: opt.value,
-                      child: Text(
-                        opt.value,
-                        overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.assignment_ind_outlined,
+                            size: 17,
+                            color: Color(0xFF1B768E),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              opt.label,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   )
@@ -860,12 +920,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         if (hasError)
           Padding(
-            padding: const EdgeInsets.only(top: 2, left: 6),
+            padding: const EdgeInsets.only(top: 3, left: 3),
             child: Text(
               error,
               style: const TextStyle(
                 fontSize: 10.5,
-                color: Color(0xFFE53935),
+                color: Color(0xFFF43F5E),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -894,550 +954,666 @@ class _RegisterScreenState extends State<RegisterScreen> {
       LengthLimitingTextInputFormatter(_currentDocRule.maxLength),
     ];
 
+    const Color bgDeep = Color(0xFF012538);
+    const Color bgDarker = Color(0xFF04141F);
+    const Color cardSurface = Color(0xFF082231);
+    const Color accentOrange = Color(0xFFFB9833);
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 20,
+      backgroundColor: bgDarker,
+      body: Stack(
+        children: [
+          // Fondo nocturno sutil con la misma paleta del Login
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    bgDeep,
+                    Color(0xFF073347),
+                    bgDarker,
+                  ],
+                  stops: [0.0, 0.45, 1.0],
                 ),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // CABECERA COMPACTA EN LÍNEA
-                      Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () => Navigator.of(context).pop(),
-                            child: Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF12566B)
-                                    .withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.arrow_back_ios_new,
-                                color: Color(0xFF12566B),
-                                size: 16,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Crea tu Cuenta',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF12566B),
-                                    height: 1.1,
-                                  ),
-                                ),
-                                Text(
-                                  'Regístrate como cliente en Mi Conductor',
-                                  style: TextStyle(
-                                    fontSize: 11.5,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+              ),
+            ),
+          ),
 
-                      const SizedBox(height: 10),
-
-                      // 1. TIPO Y NÚMERO DE DOCUMENTO
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: _buildTipoDocumentoField(),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 4,
-                            child: CustomTextField(
-                              compact: true,
-                              labelText: 'Documento',
-                              hintText: _tipoDocumento == 'PA'
-                                  ? 'AB123456'
-                                  : '1020304050',
-                              requiredMark: true,
-                              prefixIcon: Icons.badge_outlined,
-                              controller: _documentoController,
-                              focusNode: _documentoFocus,
-                              keyboardType: _tipoDocumento == 'PA'
-                                  ? TextInputType.text
-                                  : TextInputType.number,
-                              inputFormatters: docFormatters,
-                              maxLength: _currentDocRule.maxLength,
-                              textInputAction: TextInputAction.next,
-                              errorText: _getEffectiveError('documento'),
-                              isValid: _isFieldValid('documento', documentoVal),
-                              isValidating: _validating['documento'] == true,
-                              onChanged: (val) {
-                                if (_touched['documento'] == true ||
-                                    val.isNotEmpty) {
-                                  _touched['documento'] = true;
-                                  _validateField('documento');
-                                }
-                                _triggerDocumentCheck(val);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // 2. NOMBRES Y APELLIDOS
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: CustomTextField(
-                              compact: true,
-                              labelText: 'Nombres',
-                              hintText: 'Carlos',
-                              requiredMark: true,
-                              prefixIcon: Icons.person_outline,
-                              controller: _nombreController,
-                              focusNode: _nombreFocus,
-                              keyboardType: TextInputType.name,
-                              maxLength: AuthValidators.maxNombreLength,
-                              inputFormatters: [
-                                LengthLimitingTextInputFormatter(
-                                  AuthValidators.maxNombreLength,
-                                ),
-                              ],
-                              textInputAction: TextInputAction.next,
-                              errorText: _getEffectiveError('nombre'),
-                              isValid: _isFieldValid('nombre', nombreVal),
-                              onChanged: (val) {
-                                if (_touched['nombre'] == true ||
-                                    val.length >= 2) {
-                                  _touched['nombre'] = true;
-                                  _validateField('nombre');
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: CustomTextField(
-                              compact: true,
-                              labelText: 'Apellidos',
-                              hintText: 'Pérez',
-                              requiredMark: true,
-                              prefixIcon: Icons.person_outline,
-                              controller: _apellidoController,
-                              focusNode: _apellidoFocus,
-                              keyboardType: TextInputType.name,
-                              maxLength: AuthValidators.maxApellidoLength,
-                              inputFormatters: [
-                                LengthLimitingTextInputFormatter(
-                                  AuthValidators.maxApellidoLength,
-                                ),
-                              ],
-                              textInputAction: TextInputAction.next,
-                              errorText: _getEffectiveError('apellido'),
-                              isValid: _isFieldValid('apellido', apellidoVal),
-                              onChanged: (val) {
-                                if (_touched['apellido'] == true ||
-                                    val.length >= 2) {
-                                  _touched['apellido'] = true;
-                                  _validateField('apellido');
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // 3. CORREO ELECTRÓNICO
-                      CustomTextField(
-                        compact: true,
-                        labelText: 'Correo electrónico',
-                        hintText: 'nombre@dominio.com',
-                        requiredMark: true,
-                        prefixIcon: Icons.email_outlined,
-                        controller: _correoController,
-                        focusNode: _correoFocus,
-                        keyboardType: TextInputType.emailAddress,
-                        maxLength: AuthValidators.maxCorreoLength,
-                        inputFormatters: [
-                          LengthLimitingTextInputFormatter(
-                            AuthValidators.maxCorreoLength,
-                          ),
-                        ],
-                        textInputAction: TextInputAction.next,
-                        errorText: _getEffectiveError('correo'),
-                        isValid: _isFieldValid('correo', correoVal),
-                        isValidating: _validating['correo'] == true,
-                        onChanged: (val) {
-                          if (_touched['correo'] == true || val.contains('@')) {
-                            _touched['correo'] = true;
-                            _validateField('correo');
-                          }
-                          _triggerEmailCheck(val);
-                        },
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // 4. FECHA DE NACIMIENTO (INMEDIATAMENTE DESPUÉS DE CORREO) Y TELÉFONO
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: CustomTextField(
-                              compact: true,
-                              labelText: 'Fecha nac.',
-                              hintText: 'DD/MM/AAAA',
-                              requiredMark: true,
-                              prefixIcon: Icons.calendar_today_outlined,
-                              controller: _fechaNacimientoController,
-                              readOnly: true,
-                              onTap: _selectFechaNacimiento,
-                              errorText: _getEffectiveError('fechaNacimiento'),
-                              isValid: _isFieldValid('fechaNacimiento', fechaVal),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: CustomTextField(
-                              compact: true,
-                              labelText: 'Celular',
-                              hintText: '3001234567',
-                              requiredMark: true,
-                              prefixIcon: Icons.phone_outlined,
-                              controller: _telefonoController,
-                              focusNode: _telefonoFocus,
-                              keyboardType: TextInputType.phone,
-                              maxLength: AuthValidators.telefonoLength,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(
-                                  AuthValidators.telefonoLength,
-                                ),
-                              ],
-                              textInputAction: TextInputAction.next,
-                              errorText: _getEffectiveError('telefono'),
-                              isValid: _isFieldValid('telefono', telefonoVal),
-                              onChanged: (val) {
-                                if (_touched['telefono'] == true ||
-                                    val.isNotEmpty) {
-                                  _touched['telefono'] = true;
-                                  _validateField('telefono');
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // 5. DIRECCIÓN
-                      CustomTextField(
-                        compact: true,
-                        labelText: 'Dirección',
-                        hintText: 'Ej: Calle 50 # 12-34',
-                        requiredMark: true,
-                        prefixIcon: Icons.location_on_outlined,
-                        controller: _direccionController,
-                        focusNode: _direccionFocus,
-                        keyboardType: TextInputType.streetAddress,
-                        maxLength: AuthValidators.maxDireccionLength,
-                        inputFormatters: [
-                          LengthLimitingTextInputFormatter(
-                            AuthValidators.maxDireccionLength,
-                          ),
-                        ],
-                        textInputAction: TextInputAction.next,
-                        errorText: _getEffectiveError('direccion'),
-                        isValid: _isFieldValid('direccion', direccionVal),
-                        onChanged: (val) {
-                          if (_touched['direccion'] == true ||
-                              val.length >= 5) {
-                            _touched['direccion'] = true;
-                            _validateField('direccion');
-                          }
-                        },
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // 6. CONTRASEÑA Y CONFIRMAR CONTRASEÑA
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: CustomTextField(
-                              compact: true,
-                              labelText: 'Contraseña',
-                              hintText: 'Mín. 8 car.',
-                              requiredMark: true,
-                              prefixIcon: Icons.lock_outlined,
-                              suffixIcon: _obscurePassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              onSuffixIconTap: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                              obscureText: _obscurePassword,
-                              controller: _passwordController,
-                              focusNode: _passwordFocus,
-                              maxLength: AuthValidators.maxPasswordLength,
-                              inputFormatters: [
-                                LengthLimitingTextInputFormatter(
-                                  AuthValidators.maxPasswordLength,
-                                ),
-                              ],
-                              textInputAction: TextInputAction.next,
-                              errorText: _getEffectiveError('password'),
-                              isValid: _isFieldValid('password', passwordVal),
-                              onChanged: (val) {
-                                _touched['password'] = true;
-                                _validateField('password');
-                                if (_confirmarPasswordController
-                                        .text.isNotEmpty ||
-                                    _touched['confirmPassword'] == true) {
-                                  _validateField('confirmPassword');
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: CustomTextField(
-                              compact: true,
-                              labelText: 'Confirmar',
-                              hintText: 'Repítela',
-                              requiredMark: true,
-                              prefixIcon: Icons.lock_outlined,
-                              suffixIcon: _obscureConfirmPassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              onSuffixIconTap: () {
-                                setState(() {
-                                  _obscureConfirmPassword =
-                                      !_obscureConfirmPassword;
-                                });
-                              },
-                              obscureText: _obscureConfirmPassword,
-                              controller: _confirmarPasswordController,
-                              focusNode: _confirmarPasswordFocus,
-                              maxLength: AuthValidators.maxPasswordLength,
-                              inputFormatters: [
-                                LengthLimitingTextInputFormatter(
-                                  AuthValidators.maxPasswordLength,
-                                ),
-                              ],
-                              textInputAction: TextInputAction.done,
-                              errorText: _getEffectiveError('confirmPassword'),
-                              isValid: _isFieldValid(
-                                'confirmPassword',
-                                confirmVal,
-                              ),
-                              onChanged: (val) {
-                                _touched['confirmPassword'] = true;
-                                _validateField('confirmPassword');
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Indicador compacto de seguridad de contraseña en tiempo real
-                      _buildPasswordRequirements(),
-
-                      const SizedBox(height: 6),
-
-                      // ACEPTACIÓN DE TÉRMINOS Y POLÍTICA DE TRATAMIENTO DE DATOS
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: Checkbox(
-                              value: _aceptaTerminos,
-                              activeColor: const Color(0xFF12566B),
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                              onChanged: (value) {
-                                setState(() {
-                                  _aceptaTerminos = value ?? false;
-                                  if (_aceptaTerminos) {
-                                    _termsError = false;
-                                  }
-                                });
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  color: Colors.black87,
-                                  height: 1.3,
-                                ),
-                                children: [
-                                  const TextSpan(
-                                    text: 'He leído y acepto los ',
-                                  ),
-                                  TextSpan(
-                                    text: 'términos y condiciones',
-                                    recognizer: _terminosRecognizer,
-                                    style: const TextStyle(
-                                      color: Color(0xFF12566B),
-                                      fontWeight: FontWeight.w600,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                  const TextSpan(text: ' y la '),
-                                  TextSpan(
-                                    text:
-                                        'política de tratamiento de datos personales',
-                                    recognizer: _privacidadRecognizer,
-                                    style: const TextStyle(
-                                      color: Color(0xFF12566B),
-                                      fontWeight: FontWeight.w600,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                  const TextSpan(
-                                    text: ' *',
-                                    style: TextStyle(color: Color(0xFFE53935)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      if (_termsError)
-                        const Padding(
-                          padding: EdgeInsets.only(left: 32, top: 2),
-                          child: Text(
-                            'Debes aceptar los términos y condiciones y la política de tratamiento de datos personales.',
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              color: Color(0xFFE53935),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-
-                      const SizedBox(height: 10),
-
-                      // BOTÓN CREAR CUENTA
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _isFormValid ? _register : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF12566B),
-                            disabledBackgroundColor: const Color(0xFF12566B)
-                                .withValues(alpha: 0.4),
-                            foregroundColor: Colors.white,
-                            disabledForegroundColor: Colors.white70,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            elevation: _isFormValid ? 2 : 0,
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(
-                                  (_validating['correo'] == true ||
-                                          _validating['documento'] == true)
-                                      ? 'Verificando datos...'
-                                      : 'Crear Cuenta',
-                                  style: const TextStyle(
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                        ),
-                      ),
-
-                      // IR AL LOGIN
-                      Center(
-                        child: TextButton(
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          onPressed: _isLoading
-                              ? null
-                              : () {
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    MaterialPageRoute(
-                                      builder: (context) => const LoginScreen(),
-                                    ),
-                                    (route) => false,
-                                  );
-                                },
-                          child: RichText(
-                            text: TextSpan(
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                color: Colors.grey[600],
-                              ),
-                              children: const [
-                                TextSpan(text: '¿Ya tienes cuenta? '),
-                                TextSpan(
-                                  text: 'Inicia Sesión',
-                                  style: TextStyle(
-                                    color: Color(0xFF12566B),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+          // Destello cálido superior ligero
+          Positioned(
+            top: -80,
+            right: -60,
+            child: IgnorePointer(
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      accentOrange.withValues(alpha: 0.18),
+                      accentOrange.withValues(alpha: 0.0),
                     ],
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          ),
+
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: 420,
+                        minHeight: constraints.maxHeight - 20,
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // CABECERA COMPACTA CON BOTÓN VOLVER Y LOGO
+                            Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => Navigator.of(context).pop(),
+                                  child: Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.08),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color:
+                                            Colors.white.withValues(alpha: 0.16),
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.arrow_back_ios_new_rounded,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Crea tu Cuenta',
+                                        style: TextStyle(
+                                          fontSize: 19,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                          height: 1.1,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Regístrate como cliente en Mi Conductor',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color:
+                                              Colors.white.withValues(alpha: 0.68),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: accentOrange.withValues(alpha: 0.8),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: ClipOval(
+                                    child: Transform.scale(
+                                      scale: 1.07,
+                                      child: Image.asset(
+                                        'assets/images/logo_mi_conductor.jpg',
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                const Icon(
+                                          Icons.directions_car_filled_rounded,
+                                          color: accentOrange,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // TARJETA DEL FORMULARIO: CADA CAMPO TIENE SU PROPIA FILA DE ANCHO COMPLETO
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                              decoration: BoxDecoration(
+                                color: cardSurface.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(22),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.12),
+                                  width: 1.0,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.35),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 12),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // 1. TIPO DE DOCUMENTO (FILA PROPIA DE ANCHO COMPLETO)
+                                  _buildTipoDocumentoField(),
+
+                                  const SizedBox(height: 13),
+
+                                  // 2. NÚMERO DE DOCUMENTO (FILA PROPIA DE ANCHO COMPLETO)
+                                  CustomTextField(
+                                    darkTheme: true,
+                                    labelText: 'Número de documento',
+                                    hintText: _tipoDocumento == 'PA'
+                                        ? 'Ej. AB123456'
+                                        : 'Ej. 1020304050',
+                                    requiredMark: true,
+                                    prefixIcon: Icons.badge_outlined,
+                                    controller: _documentoController,
+                                    focusNode: _documentoFocus,
+                                    keyboardType: _tipoDocumento == 'PA'
+                                        ? TextInputType.text
+                                        : TextInputType.number,
+                                    inputFormatters: docFormatters,
+                                    maxLength: _currentDocRule.maxLength,
+                                    textInputAction: TextInputAction.next,
+                                    errorText: _getEffectiveError('documento'),
+                                    isValid:
+                                        _isFieldValid('documento', documentoVal),
+                                    isValidating: _validating['documento'] == true,
+                                    onChanged: (val) {
+                                      if (_touched['documento'] == true ||
+                                          val.isNotEmpty) {
+                                        _touched['documento'] = true;
+                                        _validateField('documento');
+                                      }
+                                      _triggerDocumentCheck(val);
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 13),
+
+                                  // 3. NOMBRES (FILA PROPIA DE ANCHO COMPLETO)
+                                  CustomTextField(
+                                    darkTheme: true,
+                                    labelText: 'Nombres',
+                                    hintText: 'Ej. Carlos Alberto',
+                                    requiredMark: true,
+                                    prefixIcon: Icons.person_outline,
+                                    controller: _nombreController,
+                                    focusNode: _nombreFocus,
+                                    keyboardType: TextInputType.name,
+                                    maxLength: AuthValidators.maxNombreLength,
+                                    inputFormatters: [
+                                      LengthLimitingTextInputFormatter(
+                                        AuthValidators.maxNombreLength,
+                                      ),
+                                    ],
+                                    textInputAction: TextInputAction.next,
+                                    errorText: _getEffectiveError('nombre'),
+                                    isValid: _isFieldValid('nombre', nombreVal),
+                                    onChanged: (val) {
+                                      if (_touched['nombre'] == true ||
+                                          val.length >= 2) {
+                                        _touched['nombre'] = true;
+                                        _validateField('nombre');
+                                      }
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 13),
+
+                                  // 4. APELLIDOS (FILA PROPIA DE ANCHO COMPLETO)
+                                  CustomTextField(
+                                    darkTheme: true,
+                                    labelText: 'Apellidos',
+                                    hintText: 'Ej. Pérez Gómez',
+                                    requiredMark: true,
+                                    prefixIcon: Icons.person_outline,
+                                    controller: _apellidoController,
+                                    focusNode: _apellidoFocus,
+                                    keyboardType: TextInputType.name,
+                                    maxLength: AuthValidators.maxApellidoLength,
+                                    inputFormatters: [
+                                      LengthLimitingTextInputFormatter(
+                                        AuthValidators.maxApellidoLength,
+                                      ),
+                                    ],
+                                    textInputAction: TextInputAction.next,
+                                    errorText: _getEffectiveError('apellido'),
+                                    isValid: _isFieldValid('apellido', apellidoVal),
+                                    onChanged: (val) {
+                                      if (_touched['apellido'] == true ||
+                                          val.length >= 2) {
+                                        _touched['apellido'] = true;
+                                        _validateField('apellido');
+                                      }
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 13),
+
+                                  // 5. CORREO ELECTRÓNICO (FILA PROPIA DE ANCHO COMPLETO)
+                                  CustomTextField(
+                                    darkTheme: true,
+                                    labelText: 'Correo electrónico',
+                                    hintText: 'nombre@dominio.com',
+                                    requiredMark: true,
+                                    prefixIcon: Icons.email_outlined,
+                                    controller: _correoController,
+                                    focusNode: _correoFocus,
+                                    keyboardType: TextInputType.emailAddress,
+                                    maxLength: AuthValidators.maxCorreoLength,
+                                    inputFormatters: [
+                                      LengthLimitingTextInputFormatter(
+                                        AuthValidators.maxCorreoLength,
+                                      ),
+                                    ],
+                                    textInputAction: TextInputAction.next,
+                                    errorText: _getEffectiveError('correo'),
+                                    isValid: _isFieldValid('correo', correoVal),
+                                    isValidating: _validating['correo'] == true,
+                                    onChanged: (val) {
+                                      if (_touched['correo'] == true ||
+                                          val.contains('@')) {
+                                        _touched['correo'] = true;
+                                        _validateField('correo');
+                                      }
+                                      _triggerEmailCheck(val);
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 13),
+
+                                  // 6. FECHA DE NACIMIENTO (FILA PROPIA DE ANCHO COMPLETO)
+                                  CustomTextField(
+                                    darkTheme: true,
+                                    labelText: 'Fecha de nacimiento',
+                                    hintText: 'DD/MM/AAAA',
+                                    requiredMark: true,
+                                    prefixIcon: Icons.calendar_today_outlined,
+                                    controller: _fechaNacimientoController,
+                                    readOnly: true,
+                                    onTap: _selectFechaNacimiento,
+                                    errorText:
+                                        _getEffectiveError('fechaNacimiento'),
+                                    isValid:
+                                        _isFieldValid('fechaNacimiento', fechaVal),
+                                  ),
+
+                                  const SizedBox(height: 13),
+
+                                  // 7. CELULAR (FILA PROPIA DE ANCHO COMPLETO)
+                                  CustomTextField(
+                                    darkTheme: true,
+                                    labelText: 'Celular',
+                                    hintText: 'Ej. 3001234567',
+                                    requiredMark: true,
+                                    prefixIcon: Icons.phone_outlined,
+                                    controller: _telefonoController,
+                                    focusNode: _telefonoFocus,
+                                    keyboardType: TextInputType.phone,
+                                    maxLength: AuthValidators.telefonoLength,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(
+                                        AuthValidators.telefonoLength,
+                                      ),
+                                    ],
+                                    textInputAction: TextInputAction.next,
+                                    errorText: _getEffectiveError('telefono'),
+                                    isValid: _isFieldValid('telefono', telefonoVal),
+                                    onChanged: (val) {
+                                      if (_touched['telefono'] == true ||
+                                          val.isNotEmpty) {
+                                        _touched['telefono'] = true;
+                                        _validateField('telefono');
+                                      }
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 13),
+
+                                  // 8. DIRECCIÓN (FILA PROPIA DE ANCHO COMPLETO)
+                                  CustomTextField(
+                                    darkTheme: true,
+                                    labelText: 'Dirección',
+                                    hintText: 'Ej: Calle 50 # 12-34',
+                                    requiredMark: true,
+                                    prefixIcon: Icons.location_on_outlined,
+                                    controller: _direccionController,
+                                    focusNode: _direccionFocus,
+                                    keyboardType: TextInputType.streetAddress,
+                                    maxLength: AuthValidators.maxDireccionLength,
+                                    inputFormatters: [
+                                      LengthLimitingTextInputFormatter(
+                                        AuthValidators.maxDireccionLength,
+                                      ),
+                                    ],
+                                    textInputAction: TextInputAction.next,
+                                    errorText: _getEffectiveError('direccion'),
+                                    isValid:
+                                        _isFieldValid('direccion', direccionVal),
+                                    onChanged: (val) {
+                                      if (_touched['direccion'] == true ||
+                                          val.length >= 5) {
+                                        _touched['direccion'] = true;
+                                        _validateField('direccion');
+                                      }
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 13),
+
+                                  // 9. CONTRASEÑA (FILA PROPIA DE ANCHO COMPLETO)
+                                  CustomTextField(
+                                    darkTheme: true,
+                                    labelText: 'Contraseña',
+                                    hintText: 'Mínimo 8 caracteres',
+                                    requiredMark: true,
+                                    prefixIcon: Icons.lock_outlined,
+                                    suffixIcon: _obscurePassword
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    onSuffixIconTap: () {
+                                      setState(() {
+                                        _obscurePassword = !_obscurePassword;
+                                      });
+                                    },
+                                    obscureText: _obscurePassword,
+                                    controller: _passwordController,
+                                    focusNode: _passwordFocus,
+                                    maxLength: AuthValidators.maxPasswordLength,
+                                    inputFormatters: [
+                                      LengthLimitingTextInputFormatter(
+                                        AuthValidators.maxPasswordLength,
+                                      ),
+                                    ],
+                                    textInputAction: TextInputAction.next,
+                                    errorText: _getEffectiveError('password'),
+                                    isValid: _isFieldValid('password', passwordVal),
+                                    onChanged: (val) {
+                                      _touched['password'] = true;
+                                      _validateField('password');
+                                      if (_confirmarPasswordController
+                                              .text.isNotEmpty ||
+                                          _touched['confirmPassword'] == true) {
+                                        _validateField('confirmPassword');
+                                      }
+                                    },
+                                  ),
+
+                                  // Indicador de seguridad de contraseña
+                                  _buildPasswordRequirements(),
+
+                                  const SizedBox(height: 13),
+
+                                  // 10. CONFIRMAR CONTRASEÑA (FILA PROPIA DE ANCHO COMPLETO)
+                                  CustomTextField(
+                                    darkTheme: true,
+                                    labelText: 'Confirmar contraseña',
+                                    hintText: 'Repite tu contraseña',
+                                    requiredMark: true,
+                                    prefixIcon: Icons.lock_outlined,
+                                    suffixIcon: _obscureConfirmPassword
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    onSuffixIconTap: () {
+                                      setState(() {
+                                        _obscureConfirmPassword =
+                                            !_obscureConfirmPassword;
+                                      });
+                                    },
+                                    obscureText: _obscureConfirmPassword,
+                                    controller: _confirmarPasswordController,
+                                    focusNode: _confirmarPasswordFocus,
+                                    maxLength: AuthValidators.maxPasswordLength,
+                                    inputFormatters: [
+                                      LengthLimitingTextInputFormatter(
+                                        AuthValidators.maxPasswordLength,
+                                      ),
+                                    ],
+                                    textInputAction: TextInputAction.done,
+                                    errorText:
+                                        _getEffectiveError('confirmPassword'),
+                                    isValid: _isFieldValid(
+                                      'confirmPassword',
+                                      confirmVal,
+                                    ),
+                                    onChanged: (val) {
+                                      _touched['confirmPassword'] = true;
+                                      _validateField('confirmPassword');
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  // ACEPTACIÓN DE TÉRMINOS Y POLÍTICA DE TRATAMIENTO DE DATOS
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      SizedBox(
+                                        height: 22,
+                                        width: 22,
+                                        child: Checkbox(
+                                          value: _aceptaTerminos,
+                                          activeColor: accentOrange,
+                                          checkColor: bgDeep,
+                                          side: BorderSide(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.42),
+                                            width: 1.4,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(5),
+                                          ),
+                                          materialTapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _aceptaTerminos = value ?? false;
+                                              if (_aceptaTerminos) {
+                                                _termsError = false;
+                                              }
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: RichText(
+                                          text: TextSpan(
+                                            style: TextStyle(
+                                              fontFamily: 'Arial',
+                                              fontSize: 12,
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.78),
+                                              height: 1.35,
+                                            ),
+                                            children: [
+                                              const TextSpan(
+                                                text: 'He leído y acepto los ',
+                                              ),
+                                              TextSpan(
+                                                text: 'términos y condiciones',
+                                                recognizer: _terminosRecognizer,
+                                                style: const TextStyle(
+                                                  color: accentOrange,
+                                                  fontWeight: FontWeight.w700,
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                ),
+                                              ),
+                                              const TextSpan(text: ' y la '),
+                                              TextSpan(
+                                                text:
+                                                    'política de tratamiento de datos personales',
+                                                recognizer: _privacidadRecognizer,
+                                                style: const TextStyle(
+                                                  color: accentOrange,
+                                                  fontWeight: FontWeight.w700,
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                ),
+                                              ),
+                                              const TextSpan(
+                                                text: ' *',
+                                                style: TextStyle(
+                                                  color: Color(0xFFF43F5E),
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  if (_termsError)
+                                    const Padding(
+                                      padding: EdgeInsets.only(left: 30, top: 3),
+                                      child: Text(
+                                        'Debes aceptar los términos y condiciones y la política de tratamiento de datos personales.',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Color(0xFFF43F5E),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+
+                                  const SizedBox(height: 16),
+
+                                  // BOTÓN CREAR CUENTA
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: _isFormValid ? _register : null,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: accentOrange,
+                                        disabledBackgroundColor:
+                                            Colors.white.withValues(alpha: 0.12),
+                                        foregroundColor: bgDeep,
+                                        disabledForegroundColor:
+                                            Colors.white.withValues(alpha: 0.42),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        elevation: _isFormValid ? 4 : 0,
+                                        shadowColor:
+                                            accentOrange.withValues(alpha: 0.4),
+                                      ),
+                                      child: _isLoading
+                                          ? const SizedBox(
+                                              height: 18,
+                                              width: 18,
+                                              child: CircularProgressIndicator(
+                                                color: bgDeep,
+                                                strokeWidth: 2.2,
+                                              ),
+                                            )
+                                          : Text(
+                                              (_validating['correo'] == true ||
+                                                      _validating['documento'] ==
+                                                          true)
+                                                  ? 'Verificando datos...'
+                                                  : 'Crear Cuenta',
+                                              style: const TextStyle(
+                                                fontSize: 15.5,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            // IR AL LOGIN
+                            Center(
+                              child: TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 6),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                onPressed: _isLoading
+                                    ? null
+                                    : () {
+                                        Navigator.of(context).pushAndRemoveUntil(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const LoginScreen(),
+                                          ),
+                                          (route) => false,
+                                        );
+                                      },
+                                child: RichText(
+                                  text: TextSpan(
+                                    style: TextStyle(
+                                      fontFamily: 'Arial',
+                                      fontSize: 13.5,
+                                      color: Colors.white.withValues(alpha: 0.70),
+                                    ),
+                                    children: const [
+                                      TextSpan(text: '¿Ya tienes cuenta? '),
+                                      TextSpan(
+                                        text: 'Inicia Sesión',
+                                        style: TextStyle(
+                                          color: accentOrange,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

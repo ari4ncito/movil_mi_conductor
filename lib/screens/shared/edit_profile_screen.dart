@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../../services/conductor_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -58,6 +59,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _obscureNuevaPassword = true;
   bool _obscureConfirmarPassword = true;
 
+  // Verificación de correo duplicado (mismo comportamiento que el registro y la web)
+  String _correoOriginal = '';
+  String? _correoDupError;
+  bool _correoVerificando = false;
+  Timer? _correoDebounce;
+
+  bool get _esCliente => _rol == 'CLIENTE' || _rol == 'CLIENTES';
+
   String? _passwordActualError;
   String? _nuevaPasswordError;
   String? _confirmarPasswordError;
@@ -76,11 +85,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _correoController.addListener(_onCorreoChanged);
     _cargarDatos();
   }
 
   @override
   void dispose() {
+    _correoDebounce?.cancel();
+    _correoController.removeListener(_onCorreoChanged);
     _nombreController.dispose();
     _apellidoController.dispose();
     _documentoController.dispose();
@@ -162,6 +174,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
       }
 
+      _correoOriginal = _correoController.text.trim().toLowerCase();
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -172,8 +185,60 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  void _onCorreoChanged() {
+    final correo = _correoController.text.trim().toLowerCase();
+    _correoDebounce?.cancel();
+
+    if (_isLoading || correo == _correoOriginal || AuthValidators.validateCorreo(correo) != null) {
+      if (_correoDupError != null || _correoVerificando) {
+        setState(() {
+          _correoDupError = null;
+          _correoVerificando = false;
+        });
+      }
+      return;
+    }
+
+    setState(() {
+      _correoVerificando = true;
+      _correoDupError = null;
+    });
+
+    _correoDebounce = Timer(const Duration(milliseconds: 500), () async {
+      final error = await _verificarCorreoDisponible(correo);
+      // Si el usuario siguió escribiendo, esta respuesta ya no aplica
+      if (!mounted || _correoController.text.trim().toLowerCase() != correo) return;
+      setState(() {
+        _correoDupError = error;
+        _correoVerificando = false;
+      });
+    });
+  }
+
+  /// Devuelve el mensaje de error si el correo ya pertenece a otro usuario, o null si está libre.
+  Future<String?> _verificarCorreoDisponible(String correo) async {
+    try {
+      final res = await AuthService.checkEmail(correo);
+      return res['exists'] == true ? 'Este correo electrónico ya está registrado en otro usuario.' : null;
+    } catch (e) {
+      // Error de red: no se bloquea aquí; el backend vuelve a validar al guardar
+      debugPrint('Error verificando correo: $e');
+      return null;
+    }
+  }
+
   Future<void> _guardarPerfil() async {
     if (_isSaving) return;
+
+    if (_correoVerificando) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Espera a que finalice la verificación del correo.'),
+          backgroundColor: Color(0xFFFB9833),
+        ),
+      );
+      return;
+    }
 
     final formValid = _formKey.currentState!.validate();
 
@@ -231,6 +296,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     setState(() => _isSaving = true);
 
+    final correoNuevo = _correoController.text.trim().toLowerCase();
+    if (correoNuevo != _correoOriginal) {
+      final dupError = await _verificarCorreoDisponible(correoNuevo);
+      if (!mounted) return;
+      if (dupError != null) {
+        setState(() {
+          _correoDupError = dupError;
+          _isSaving = false;
+        });
+        _formKey.currentState?.validate();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(dupError), backgroundColor: Colors.redAccent),
+        );
+        return;
+      }
+    }
+
     try {
       // 1. Si se solicitó cambio de contraseña, verificar y actualizar primero en el backend autenticado
       if (_cambiarPassword) {
@@ -254,15 +336,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       await UsuarioService.actualizar(_usuarioId!, datosUsuario);
 
       // 3. Si es Cliente, actualizar dirección en Cliente
-      if (_rol == 'CLIENTE' && _clienteId != null && _direccionController.text.trim().isNotEmpty) {
-        try {
-          await ClienteService.update(_clienteId!, {
-            'direccion': _direccionController.text.trim(),
-          });
-        } catch (_) {
-          // Ignorar si el endpoint de cliente no acepta update directo
-        }
+      if (_esCliente && _clienteId != null) {
+        await ClienteService.update(_clienteId!, {
+          'direccion': _direccionController.text.trim(),
+        });
       }
+      _correoOriginal = correoNuevo;
 
       if (!mounted) return;
 
@@ -477,6 +556,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             readOnly: esConductor,
                             textCapitalization: TextCapitalization.words,
                             validator: (val) {
+                              if (_esCliente) return AuthValidators.validateNombre(val);
                               if (val == null || val.trim().isEmpty) {
                                 return 'El nombre es obligatorio.';
                               }
@@ -492,6 +572,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             readOnly: esConductor,
                             textCapitalization: TextCapitalization.words,
                             validator: (val) {
+                              if (_esCliente) return AuthValidators.validateApellido(val);
                               if (val == null || val.trim().isEmpty) {
                                 return 'El apellido es obligatorio.';
                               }
@@ -526,15 +607,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             icon: Icons.email_outlined,
                             keyboardType: TextInputType.emailAddress,
                             readOnly: esConductor,
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'El correo electrónico es obligatorio.';
-                              }
-                              if (!val.contains('@') || !val.contains('.')) {
-                                return 'Ingresa un correo electrónico válido.';
-                              }
-                              return null;
-                            },
+                            validator: (val) => AuthValidators.validateCorreo(val) ?? _correoDupError,
                           ),
                           const SizedBox(height: 16),
                           _buildTextField(
@@ -544,6 +617,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             icon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
                             validator: (val) {
+                              if (_esCliente) return AuthValidators.validateTelefono(val);
                               if (val == null || val.trim().isEmpty) {
                                 return 'El teléfono es obligatorio.';
                               }
@@ -553,7 +627,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               return null;
                             },
                           ),
-                          if (_rol == 'CLIENTE') ...[
+                          if (_esCliente) ...[
                             const SizedBox(height: 16),
                             _buildTextField(
                               controller: _direccionController,
@@ -561,6 +635,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               hint: 'Ej. Calle 45 # 12-34',
                               icon: Icons.home_outlined,
                               textCapitalization: TextCapitalization.sentences,
+                              validator: AuthValidators.validateDireccion,
                             ),
                           ],
                         ],
@@ -906,6 +981,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,
           validator: validator,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           style: TextStyle(
             fontSize: 15,
             color: readOnly ? AppColors.slateGray : AppColors.textPrimary,

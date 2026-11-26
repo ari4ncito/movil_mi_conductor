@@ -23,6 +23,7 @@ class CustomTextField extends StatelessWidget {
   final bool readOnly;
   final VoidCallback? onTap;
   final bool compact;
+  final bool darkTheme;
 
   const CustomTextField({
     super.key,
@@ -47,17 +48,46 @@ class CustomTextField extends StatelessWidget {
     this.readOnly = false,
     this.onTap,
     this.compact = false,
+    this.darkTheme = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final hasError = errorText != null && errorText!.isNotEmpty;
+    final hasFocus = focusNode?.hasFocus ?? false;
 
-    Color borderColor = Colors.transparent;
+    final Color errorColor =
+        darkTheme ? const Color(0xFFF43F5E) : const Color(0xFFE53935);
+    final Color validColor =
+        darkTheme ? const Color(0xFF10B981) : const Color(0xFF2E7D32);
+    const Color accentOrange = Color(0xFFFB9833);
+    const Color petrolLight = Color(0xFF1B768E);
+
+    Color borderColor = darkTheme
+        ? Colors.white.withValues(alpha: 0.14)
+        : Colors.transparent;
+    double borderWidth = darkTheme ? 1.1 : 0.0;
+
     if (hasError) {
-      borderColor = const Color(0xFFE53935);
+      borderColor = errorColor;
+      borderWidth = 1.5;
+    } else if (darkTheme && hasFocus) {
+      borderColor = accentOrange;
+      borderWidth = 1.5;
     } else if (isValid) {
-      borderColor = const Color(0xFF2E7D32);
+      borderColor = darkTheme
+          ? validColor.withValues(alpha: 0.75)
+          : validColor;
+      borderWidth = 1.4;
+    }
+
+    Color iconColor = darkTheme ? petrolLight : Colors.grey;
+    if (hasError) {
+      iconColor = errorColor;
+    } else if (darkTheme && hasFocus) {
+      iconColor = accentOrange;
+    } else if (isValid) {
+      iconColor = validColor;
     }
 
     Widget? effectiveSuffix;
@@ -69,7 +99,7 @@ class CustomTextField extends StatelessWidget {
           height: 14,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            color: Color(0xFFFB9833),
+            color: accentOrange,
           ),
         ),
       );
@@ -81,29 +111,162 @@ class CustomTextField extends StatelessWidget {
         child: Icon(
           suffixIcon,
           size: compact ? 18 : 22,
-          color: hasError ? const Color(0xFFE53935) : Colors.grey,
+          color: hasError
+              ? errorColor
+              : (darkTheme
+                  ? Colors.white.withValues(alpha: 0.55)
+                  : Colors.grey),
         ),
       );
     } else if (isValid && !hasError) {
       effectiveSuffix = Icon(
         Icons.check_circle_rounded,
-        color: const Color(0xFF2E7D32),
+        color: validColor,
         size: compact ? 16 : 20,
       );
     }
 
+    // Modo oscuro con estilo limpio y etiquetas externas alineadas (igual al Login)
+    if (darkTheme) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 5),
+            child: RichText(
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              text: TextSpan(
+                style: TextStyle(
+                  fontFamily: 'Arial',
+                  fontSize: compact ? 10.5 : 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: Colors.white.withValues(alpha: 0.74),
+                ),
+                children: [
+                  TextSpan(text: labelText.toUpperCase()),
+                  if (requiredMark)
+                    const TextSpan(
+                      text: ' *',
+                      style: TextStyle(
+                        color: accentOrange,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            height: compact ? 42 : 48,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFF041722),
+              borderRadius: BorderRadius.circular(compact ? 11 : 14),
+              border: Border.all(
+                color: borderColor,
+                width: borderWidth,
+              ),
+            ),
+            child: TextField(
+              controller: controller,
+              focusNode: focusNode,
+              obscureText: obscureText,
+              keyboardType: keyboardType,
+              textInputAction: textInputAction,
+              maxLength: maxLength,
+              inputFormatters: inputFormatters,
+              readOnly: readOnly,
+              onTap: onTap,
+              onChanged: onChanged,
+              cursorColor: accentOrange,
+              style: TextStyle(
+                fontSize: compact ? 13 : 14.5,
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: InputDecoration(
+                counterText: '',
+                isDense: true,
+                hintText: hintText ?? labelText,
+                hintStyle: TextStyle(
+                  fontSize: compact ? 12.5 : 14,
+                  color: Colors.white.withValues(alpha: 0.34),
+                  fontWeight: FontWeight.w400,
+                ),
+                prefixIcon: prefixIcon != null
+                    ? Icon(
+                        prefixIcon,
+                        size: compact ? 17 : 20,
+                        color: iconColor,
+                      )
+                    : null,
+                prefixIconConstraints: BoxConstraints(
+                  minWidth: compact ? 36 : 42,
+                  minHeight: compact ? 40 : 46,
+                ),
+                suffixIcon: effectiveSuffix,
+                suffixIconConstraints: BoxConstraints(
+                  minWidth: compact ? 34 : 40,
+                  minHeight: compact ? 40 : 46,
+                ),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: compact ? 10 : 14,
+                  vertical: compact ? 10 : 12,
+                ),
+              ),
+            ),
+          ),
+          if (hasError)
+            Padding(
+              padding: const EdgeInsets.only(top: 3, left: 3),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 1),
+                    child: Icon(
+                      Icons.error_outline_rounded,
+                      size: 11.5,
+                      color: errorColor,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      errorText!,
+                      style: TextStyle(
+                        fontSize: compact ? 10.5 : 11.5,
+                        color: errorColor,
+                        fontWeight: FontWeight.w500,
+                        height: 1.25,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      );
+    }
+
+    // Modo claro predeterminado para otras pantallas de la app
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 180),
           decoration: BoxDecoration(
             color: const Color(0xFFF0F4F8),
-            borderRadius: BorderRadius.circular(compact ? 10 : 12),
+            borderRadius: BorderRadius.circular(compact ? 12 : 14),
             border: Border.all(
               color: borderColor,
-              width: (hasError || isValid) ? 1.5 : 0.0,
+              width: borderWidth,
             ),
           ),
           child: TextField(
@@ -117,7 +280,10 @@ class CustomTextField extends StatelessWidget {
             readOnly: readOnly,
             onTap: onTap,
             onChanged: onChanged,
-            style: TextStyle(fontSize: compact ? 13 : 14.5),
+            style: TextStyle(
+              fontSize: compact ? 13 : 14.5,
+              color: Colors.black87,
+            ),
             decoration: InputDecoration(
               counterText: '',
               isDense: compact,
@@ -125,8 +291,8 @@ class CustomTextField extends StatelessWidget {
               labelStyle: TextStyle(
                 fontSize: compact ? 12 : 14,
                 color: hasError
-                    ? const Color(0xFFE53935)
-                    : (isValid ? const Color(0xFF2E7D32) : Colors.grey[700]),
+                    ? errorColor
+                    : (isValid ? validColor : Colors.grey[700]),
               ),
               hintText: hintText,
               hintStyle: TextStyle(fontSize: compact ? 12 : 14),
@@ -134,9 +300,7 @@ class CustomTextField extends StatelessWidget {
                   ? Icon(
                       prefixIcon,
                       size: compact ? 18 : 22,
-                      color: hasError
-                          ? const Color(0xFFE53935)
-                          : (isValid ? const Color(0xFF2E7D32) : Colors.grey),
+                      color: iconColor,
                     )
                   : null,
               prefixIconConstraints: compact
@@ -160,12 +324,12 @@ class CustomTextField extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
-                  padding: EdgeInsets.only(top: 1),
+                Padding(
+                  padding: const EdgeInsets.only(top: 1),
                   child: Icon(
                     Icons.error_outline_rounded,
                     size: 12,
-                    color: Color(0xFFE53935),
+                    color: errorColor,
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -174,7 +338,7 @@ class CustomTextField extends StatelessWidget {
                     errorText!,
                     style: TextStyle(
                       fontSize: compact ? 10.5 : 12,
-                      color: const Color(0xFFE53935),
+                      color: errorColor,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
